@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "nasdaq-data-link-mcp.fullname" . }}-test-connection"
+  labels:
+    {{- include "nasdaq-data-link-mcp.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: test-mcp
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Testing MCP server availability..."
+          python nasdaq_data_link_mcp_os/server.py --help
+          echo "MCP server test completed successfully"
+      env:
+        - name: PYTHONPATH
+          value: "/app"
+        - name: NASDAQ_DATA_LINK_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "nasdaq-data-link-mcp.fullname" . }}-secret
+              key: nasdaq-api-key
+  restartPolicy: Never

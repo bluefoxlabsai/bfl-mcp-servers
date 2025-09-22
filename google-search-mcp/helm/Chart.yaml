@@ -1,0 +1,12 @@
+apiVersion: v2
+name: google-search-mcp-server
+description: A Helm chart for Google Search MCP Server - A Model Context Protocol server for Google Custom Search
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - mcp
+  - model-context-protocol
+  - google-search
+  - ai
+  - claude

@@ -1,0 +1,25 @@
+{{- $serviceEnabled := false }}
+{{- if eq .Values.service.enabled "auto" }}
+  {{- if ne .Values.mcp.transport "stdio" }}
+    {{- $serviceEnabled = true }}
+  {{- end }}
+{{- else if .Values.service.enabled }}
+  {{- $serviceEnabled = true }}
+{{- end }}
+{{- if $serviceEnabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nasdaq-data-link-mcp.fullname" . }}
+  labels:
+    {{- include "nasdaq-data-link-mcp.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "nasdaq-data-link-mcp.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,66 @@
+# Production environment values
+# Use this for production deployments
+
+replicaCount: 2
+
+image:
+  repository: bluefoxlabs/nasdaq-data-link-mcp
+  tag: "0.2.1"  # Use specific version in production
+  pullPolicy: IfNotPresent
+
+# Production resources
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Production ingress with TLS
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: nasdaq-mcp.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: nasdaq-mcp-tls
+      hosts:
+        - nasdaq-mcp.yourdomain.com
+
+# Use existing secret in production (create manually)
+secret:
+  create: false
+  name: "nasdaq-mcp-api-key"
+
+# Security context for production
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Node affinity for production workloads
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - nasdaq-data-link-mcp
+        topologyKey: kubernetes.io/hostname

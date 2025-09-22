@@ -1,0 +1,33 @@
+.aider*
+.env
+.secrets
+__pycache__/
+*.py[cod]
+*$py.class
+uv.lock
+*.csv
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Helm
+*.tgz
+charts/
+Chart.lock
+requirements.lock
+
+# Kubernetes
+*.kubeconfig
+kustomization.yaml.tmp
+
+# Helm values override files
+*-values.yaml
+values-*.yaml
+!helm-chart/values.yaml
+
+# Helm release artifacts
+*.tar.gz
+.helm/

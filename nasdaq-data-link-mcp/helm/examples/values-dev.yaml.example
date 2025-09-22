@@ -1,0 +1,35 @@
+# Development environment values
+# Use this for development/testing deployments
+
+replicaCount: 1
+
+image:
+  repository: bluefoxlabs/nasdaq-data-link-mcp
+  tag: "latest"
+  pullPolicy: Always
+
+# Resources for development
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable ingress for easy access
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: nasdaq-mcp-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Development secret (replace with your API key)
+secret:
+  create: true
+  nasdaqApiKey: "your-dev-api-key-here"

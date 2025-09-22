@@ -1,0 +1,56 @@
+# Production values for google-search-mcp-server
+# Copy this file and customize for your environment
+
+replicaCount: 2
+
+image:
+  repository: google-search-mcp-server
+  pullPolicy: Always
+  tag: "latest"
+
+googleApi:
+  # Set your actual Google API credentials here
+  apiKey: "YOUR_GOOGLE_API_KEY_HERE"
+  cseId: "YOUR_GOOGLE_CSE_ID_HERE"
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: google-search-mcp.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: google-search-mcp-tls
+      hosts:
+        - google-search-mcp.yourdomain.com
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+  kubernetes.io/os: linux
+
+healthCheck:
+  enabled: true

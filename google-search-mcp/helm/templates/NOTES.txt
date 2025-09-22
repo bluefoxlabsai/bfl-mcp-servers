@@ -1,0 +1,65 @@
+🎉 Google Search MCP Server has been deployed!
+
+✅ Release: {{ .Release.Name }}
+✅ Namespace: {{ .Release.Namespace }}
+
+📋 To get the application status:
+   kubectl get all -l "app.kubernetes.io/name={{ include "google-search-mcp-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
+
+🔍 To check if the deployment is ready:
+   kubectl get deployment {{ include "google-search-mcp-server.fullname" . }} -n {{ .Release.Namespace }}
+
+📊 To view logs:
+   kubectl logs -l "app.kubernetes.io/name={{ include "google-search-mcp-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
+
+{{- if .Values.ingress.enabled }}
+🌐 Your application is accessible via Ingress:
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+🌐 Get the application URL by running these commands:
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "google-search-mcp-server.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+🌐 Get the application URL by running these commands:
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "google-search-mcp-server.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "google-search-mcp-server.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+🌐 Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "google-search-mcp-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+⚙️ Configuration:
+   - Google API Key: {{ if .Values.googleApi.apiKey }}✅ Configured{{ else }}❌ Not set{{ end }}
+   - Google CSE ID: {{ if .Values.googleApi.cseId }}✅ Configured{{ else }}❌ Not set{{ end }}
+
+{{- if not .Values.googleApi.apiKey }}
+⚠️  WARNING: Google API Key is not configured!
+   Please set your Google API key by upgrading the release:
+   helm upgrade {{ .Release.Name }} . --set googleApi.apiKey="your-api-key-here"
+{{- end }}
+
+{{- if not .Values.googleApi.cseId }}
+⚠️  WARNING: Google CSE ID is not configured!
+   Please set your Google Custom Search Engine ID by upgrading the release:
+   helm upgrade {{ .Release.Name }} . --set googleApi.cseId="your-cse-id-here"
+{{- end }}
+
+📚 For more information:
+   - Documentation: https://github.com/hubbertj/google-search-mcp-server
+   - MCP Protocol: https://modelcontextprotocol.io
+
+🔧 To upgrade this release:
+   helm upgrade {{ .Release.Name }} . --values values.yaml
+
+🗑️  To uninstall this release:
+   helm uninstall {{ .Release.Name }}

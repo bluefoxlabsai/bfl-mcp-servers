@@ -1,0 +1,28 @@
+[project]
+name = "google-search-mcp-server"
+version = "0.1.0"
+description = "A Model Context Protocol (MCP) server that provides Google Custom Search functionality"
+authors = [
+    {name = "gradusnikov", email = "gradusnikov@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp",
+    "google-api-python-client",
+    "python-dotenv",
+]
+
+[project.urls]
+Homepage = "https://github.com/gradusnikov/google-search-mcp-server"
+Repository = "https://github.com/gradusnikov/google-search-mcp-server"
+
+[project.scripts]
+google-search-mcp-server = "google_search_mcp_server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = []

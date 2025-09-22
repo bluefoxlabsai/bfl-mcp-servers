@@ -3,12 +3,19 @@
 
 replicaCount: 2
 
+# MCP Server Configuration for production
+mcp:
+  transport: "sse"  # Use SSE for HTTP accessibility
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
 image:
-  repository: bluefoxlabs/nasdaq-data-link-mcp
-  tag: "0.2.1"  # Use specific version in production
+  repository: bfljerum/nasdaq-data-link-mcp
+  tag: "v0.2.1"  # Use specific version in production
   pullPolicy: IfNotPresent
 
-# Production resources
+# Production resources - higher limits for production workload
 resources:
   limits:
     cpu: 1000m
@@ -16,6 +23,11 @@ resources:
   requests:
     cpu: 200m
     memory: 256Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
 
 # Production ingress with TLS
 ingress:
@@ -39,17 +51,30 @@ secret:
   create: false
   name: "nasdaq-mcp-api-key"
 
-# Security context for production
+# Security context for production - aligned with Dockerfile
 podSecurityContext:
-  fsGroup: 2000
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
 
 securityContext:
+  allowPrivilegeEscalation: false
   capabilities:
     drop:
     - ALL
-  readOnlyRootFilesystem: true
+  readOnlyRootFilesystem: false  # Need write access for logs
   runAsNonRoot: true
-  runAsUser: 1000
+  runAsUser: 1001
+
+# Volume configuration for logs
+volumes:
+- name: logs
+  emptyDir: {}
+
+volumeMounts:
+- name: logs
+  mountPath: "/app/logs"
 
 # Node affinity for production workloads
 affinity:

@@ -4,9 +4,19 @@
 replicaCount: 1
 
 image:
-  repository: bluefoxlabs/nasdaq-data-link-mcp
+  repository: bfljerum/nasdaq-data-link-mcp
   tag: "latest"
   pullPolicy: Always
+
+# MCP server configuration for development
+mcpServer:
+  transport: "sse"
+  port: 8000
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
 
 # Resources for development
 resources:
@@ -28,6 +38,31 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+
+# Security context for development - aligned with Dockerfile
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false  # Need write access for logs
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Volume configuration for logs
+volumes:
+- name: logs
+  emptyDir: {}
+
+volumeMounts:
+- name: logs
+  mountPath: "/app/logs"
 
 # Development secret (replace with your API key)
 secret:

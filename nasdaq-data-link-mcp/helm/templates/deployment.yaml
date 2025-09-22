@@ -59,6 +59,12 @@ spec:
           args:
             - "--transport"
             - "{{ .Values.mcp.transport }}"
+            {{- if ne .Values.mcp.transport "stdio" }}
+            - "--host"
+            - "{{ .Values.mcp.server.host }}"
+            - "--port"
+            - "{{ .Values.mcp.server.port }}"
+            {{- end }}
           {{- end }}
           env:
             - name: PYTHONPATH

@@ -1,6 +1,10 @@
 {{- $serviceEnabled := false }}
-{{- if eq .Values.service.enabled "auto" }}
-  {{- if ne .Values.mcp.transport "stdio" }}
+{{- if kindIs "string" .Values.service.enabled }}
+  {{- if eq .Values.service.enabled "auto" }}
+    {{- if ne .Values.mcp.transport "stdio" }}
+      {{- $serviceEnabled = true }}
+    {{- end }}
+  {{- else if eq .Values.service.enabled "true" }}
     {{- $serviceEnabled = true }}
   {{- end }}
 {{- else if .Values.service.enabled }}

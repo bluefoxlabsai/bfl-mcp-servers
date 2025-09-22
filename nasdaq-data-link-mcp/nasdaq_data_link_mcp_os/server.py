@@ -697,33 +697,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.transport in ["streamable-http", "sse"]:
-        # For HTTP transports, add health endpoints and run with host and port
-        try:
-            # Add health endpoints if the app has the FastAPI instance
-            if hasattr(mcp, 'app') and mcp.app is not None:
-                @mcp.app.get("/health")
-                async def health_check():
-                    return {
-                        "status": "healthy",
-                        "service": "nasdaq-data-link-mcp",
-                        "api_initialized": api_initialized,
-                        "transport": args.transport
-                    }
-                
-                @mcp.app.get("/")
-                async def root():
-                    return {
-                        "service": "Nasdaq Data Link MCP Server",
-                        "status": "running",
-                        "version": "0.2.1",
-                        "transport": args.transport,
-                        "api_initialized": api_initialized
-                    }
-        except Exception as e:
-            print(f"Warning: Could not add health endpoints: {e}")
+        # For HTTP transports, use uvicorn directly for full control over host/port
+        print(f"MCP Server starting on http://{args.host}:{args.port}")
+        print(f"Transport: {args.transport}")
+        print(f"API Initialized: {api_initialized}")
+        print("Note: Use TCP socket probes for Kubernetes health checks")
         
-        # For HTTP transports, run with host and port
-        mcp.run(transport=args.transport, host=args.host, port=args.port)
+        import uvicorn
+        if args.transport == "sse":
+            app = mcp.sse_app()
+        else:  # streamable-http
+            app = mcp.streamable_http_app()
+        
+        print(f"Starting uvicorn with host={args.host}, port={args.port}")
+        uvicorn.run(app, host=args.host, port=args.port)
     else:
         # For stdio transport, run without host/port
         mcp.run(transport=args.transport)

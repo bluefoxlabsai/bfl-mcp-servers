@@ -13,19 +13,19 @@ replicaCount: 1
 # MCP Server Configuration
 mcp:
   # Transport protocol: stdio, streamable-http, sse
-  transport: "streamable-http"
+  transport: "sse"  # Default to sse to match Dockerfile
   # Server configuration for HTTP transports
   server:
     host: "0.0.0.0"
-    port: 8080
+    port: 8000  # Updated to match Dockerfile
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: stefanoamorelli/nasdaq-data-link-mcp
+  repository: bfljerum/nasdaq-data-link-mcp
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: "latest"  # Use specific version instead of latest for production
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
@@ -52,16 +52,20 @@ podAnnotations: {}
 # For more information checkout: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
 podLabels: {}
 
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false  # App needs to write logs
+  runAsNonRoot: true
+  runAsUser: 1001
 
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
@@ -70,7 +74,7 @@ service:
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
-  port: 8080
+  port: 8000  # Updated to match server port
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
@@ -127,23 +131,20 @@ httpRoute:
   #     - name: version
   #       value: v2
 
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+resources:
+  # Recommended resource limits for production deployment
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
-# Probes are enabled for HTTP transports, disabled for stdio
+# For MCP servers using FastMCP, TCP socket probes are the most reliable option
+# since FastMCP doesn't easily expose custom HTTP health endpoints
 livenessProbe:
-  httpGet:
-    path: /health
+  tcpSocket:
     port: http
   initialDelaySeconds: 30
   periodSeconds: 10
@@ -152,8 +153,7 @@ livenessProbe:
   successThreshold: 1
   enabled: true
 readinessProbe:
-  httpGet:
-    path: /health
+  tcpSocket:
     port: http
   initialDelaySeconds: 5
   periodSeconds: 5
@@ -161,6 +161,18 @@ readinessProbe:
   failureThreshold: 3
   successThreshold: 1
   enabled: true
+
+# Alternative configuration for exec probes (commented out)
+# You can use this if you want to check specific application logic
+# livenessProbe:
+#   exec:
+#     command:
+#     - /bin/sh
+#     - -c
+#     - "pgrep -f 'nasdaq_data_link_mcp_os/server.py' > /dev/null"
+#   initialDelaySeconds: 30
+#   periodSeconds: 10
+#   enabled: true
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:
@@ -171,17 +183,14 @@ autoscaling:
   # targetMemoryUtilizationPercentage: 80
 
 # Additional volumes on the output Deployment definition.
-volumes: []
-# - name: foo
-#   secret:
-#     secretName: mysecret
-#     optional: false
+volumes:
+- name: logs
+  emptyDir: {}
 
 # Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
-# - name: foo
-#   mountPath: "/etc/foo"
-#   readOnly: true
+volumeMounts:
+- name: logs
+  mountPath: "/app/logs"
 
 nodeSelector: {}
 

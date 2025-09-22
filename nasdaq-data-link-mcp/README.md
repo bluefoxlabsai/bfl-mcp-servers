@@ -7,13 +7,15 @@
 <div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![PyPI version](https://img.shields.io/badge/PyPI-v0.2.0-blue.svg)](https://pypi.org/project/nasdaq-data-link-mcp-os/)
+[![PyPI version](https://img.shields.io/badge/PyPI-v0.2.4-blue.svg)](https://pypi.org/project/nasdaq-data-link-mcp-os/)
 ![Python 3.13+](https://img.shields.io/badge/Python-3.13%2B-blue.svg)
 ![Build Status](https://img.shields.io/badge/build-passing-green.svg)
 ![Platform](https://img.shields.io/badge/platform-cross--platform-lightgrey.svg)
 ![](https://badge.mcpx.dev?type=server 'MCP Server')
 ![AI Powered](https://img.shields.io/badge/AI-powered-6f42c1?logo=anthropic&logoColor=white)
 [![PyPI Downloads](https://static.pepy.tech/badge/nasdaq-data-link-mcp-os)](https://pepy.tech/projects/nasdaq-data-link-mcp-os)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue?logo=docker&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-blue?logo=kubernetes&logoColor=white)
 
 </div>
 
@@ -154,6 +156,478 @@ uv run mcp install nasdaq_data_link_mcp_os/server.py --env-file .env --name "Nas
 ```
 
 This registers the server with your MCP client (e.g., Claude Desktop).
+
+---
+
+## 🚀 Local Development
+
+### Prerequisites
+
+- Python 3.8+ (3.13+ recommended)
+- [uv](https://docs.astral.sh/uv/) package manager
+- A [Nasdaq Data Link API key](https://data.nasdaq.com/)
+
+### Quick Start
+
+1. **Clone and navigate to the project**
+   ```bash
+   git clone <repository-url>
+   cd nasdaq-data-link-mcp
+   ```
+
+2. **Install dependencies with uv**
+   ```bash
+   uv sync
+   ```
+   This will create a virtual environment and install all required packages.
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` and add your Nasdaq Data Link API key:
+   ```bash
+   NASDAQ_DATA_LINK_API_KEY=your_api_key_here
+   PYTHONPATH=.
+   ```
+
+4. **Run the server locally**
+
+   **Option A: Default MCP Protocol (stdio)**
+   ```bash
+   PYTHONPATH=. uv run python nasdaq_data_link_mcp_os/server.py
+   ```
+   This runs the server in stdio mode for MCP client communication.
+
+   **Option B: HTTP Server with Server-Sent Events**
+   ```bash
+   PYTHONPATH=. uv run python nasdaq_data_link_mcp_os/server.py --transport sse --host 0.0.0.0 --port 8000
+   ```
+   This starts an HTTP server on `http://0.0.0.0:8000` that can be accessed via web browsers or HTTP clients.
+
+   **Option C: HTTP Server (alternative)**
+   ```bash
+   PYTHONPATH=. uv run python nasdaq_data_link_mcp_os/server.py --transport streamable-http --host 0.0.0.0 --port 8000
+   ```
+
+### Available Command Line Options
+
+```bash
+python nasdaq_data_link_mcp_os/server.py --help
+```
+
+- `--transport`: Choose transport protocol (`stdio`, `sse`, `streamable-http`)
+- `--host`: Host to bind HTTP server to (default: `0.0.0.0`)
+- `--port`: Port to bind HTTP server to (default: `8080`)
+
+### 🧪 Testing Your Local Server
+
+**For stdio transport (default):**
+The server will wait for JSON-RPC messages via stdin/stdout. This is the standard MCP protocol.
+
+**For HTTP transports:**
+- Visit `http://localhost:8000` in your browser (if using `--host 0.0.0.0`)
+- Visit `http://127.0.0.1:8000` for localhost-only binding
+- The server accepts MCP protocol messages via Server-Sent Events or HTTP
+
+### 🔧 Development Workflow
+
+1. **Make your changes** to the code
+2. **Run tests** to verify functionality:
+   ```bash
+   uv run python -m pytest tests/ -v
+   ```
+3. **Test locally** with your preferred transport method
+4. **For Kubernetes deployment**, see the `helm/` directory
+
+### 📝 Environment Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `NASDAQ_DATA_LINK_API_KEY` | Your Nasdaq Data Link API key | ✅ Yes | None |
+| `PYTHONPATH` | Python path (should be set to `.`) | ✅ Yes | None |
+
+### 🐳 Docker Deployment
+
+The NASDAQ Data Link MCP server can be easily deployed using Docker for both development and production use.
+
+#### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) installed on your system
+- A valid [Nasdaq Data Link API key](https://data.nasdaq.com/)
+
+#### Quick Start with Docker
+
+**Option A: Use pre-built image from Docker Hub (Recommended)**
+```bash
+# Run the latest version
+docker run -d --name nasdaq-mcp \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  bfljerum/nasdaq-data-link-mcp:latest
+
+# Or run a specific version
+docker run -d --name nasdaq-mcp \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  bfljerum/nasdaq-data-link-mcp:v0.2.4
+```
+
+**Option B: Build from source**
+
+**1. Build the Docker image:**
+```bash
+docker build -t nasdaq-mcp-server .
+```
+
+**2. Run the container:**
+
+**Run in detached mode (background)**
+```bash
+docker run -d --name nasdaq-mcp \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  nasdaq-mcp-server:latest
+```
+
+**Run in foreground (see logs)**
+```bash
+docker run --name nasdaq-mcp \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  bfljerum/nasdaq-data-link-mcp:latest
+```
+
+**3. Access the server:**
+- Open your browser to `http://localhost:8000`
+- The server runs with SSE (Server-Sent Events) transport by default
+
+#### Docker Management Commands
+
+**Check if container is running:**
+```bash
+docker ps
+```
+
+**View container logs:**
+```bash
+# View recent logs
+docker logs nasdaq-mcp
+
+# Follow logs in real-time
+docker logs -f nasdaq-mcp
+```
+
+**Stop the container:**
+```bash
+docker stop nasdaq-mcp
+```
+
+**Start the container again:**
+```bash
+docker start nasdaq-mcp
+```
+
+**Remove the container:**
+```bash
+docker rm nasdaq-mcp
+```
+
+#### Advanced Docker Usage
+
+**Run with custom configuration:**
+```bash
+docker run -d --name nasdaq-mcp \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  --restart unless-stopped \
+  --memory="512m" \
+  --cpus="0.5" \
+  nasdaq-mcp-server:latest
+```
+
+**Run with volume for logs:**
+```bash
+docker run -d --name nasdaq-mcp \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  -v $(pwd)/logs:/app/logs \
+  nasdaq-mcp-server:latest
+```
+
+**Override default transport mode:**
+```bash
+# Run with stdio transport (for MCP client integration)
+docker run -i --name nasdaq-mcp-stdio \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  nasdaq-mcp-server:latest \
+  python nasdaq_data_link_mcp_os/server.py --transport stdio
+
+# Run with streamable-http transport
+docker run -d --name nasdaq-mcp-http \
+  -p 8000:8000 \
+  -e NASDAQ_DATA_LINK_API_KEY=your_api_key_here \
+  nasdaq-mcp-server:latest \
+  python nasdaq_data_link_mcp_os/server.py --transport streamable-http --host 0.0.0.0 --port 8000
+```
+
+#### Docker Compose (Optional)
+
+Create a `docker-compose.yml` file:
+```yaml
+version: '3.8'
+services:
+  nasdaq-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - NASDAQ_DATA_LINK_API_KEY=your_api_key_here
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(); s.settimeout(5); s.connect(('0.0.0.0', 8000)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+```
+
+Run with Docker Compose:
+```bash
+docker-compose up -d
+```
+
+#### Container Features
+
+- **🔒 Security**: Runs as non-root user (`appuser`)
+- **📊 Health Checks**: Built-in health monitoring
+- **🔄 Signal Handling**: Proper shutdown with tini init system
+- **📦 Optimized**: Multi-stage build for smaller image size
+- **📝 Logging**: Structured logging to `/app/logs`
+
+---
+
+## ☸️ Kubernetes Deployment with Helm
+
+Deploy the NASDAQ Data Link MCP server to Kubernetes using the included Helm chart for scalable, production-ready deployments.
+
+### Prerequisites
+
+- Kubernetes cluster (1.19+)
+- Helm 3.x installed
+- kubectl configured
+- A valid [Nasdaq Data Link API key](https://data.nasdaq.com/)
+
+### Quick Start
+
+**1. Navigate to the Helm chart directory:**
+```bash
+cd helm
+```
+
+**2. Install using the enhanced installation script:**
+```bash
+# Show all available options
+./install.sh --help
+
+# Basic installation (will prompt for API key and namespace)
+./install.sh
+
+# Advanced installation with custom options
+./install.sh nasdaq-mcp --image-tag v0.2.4 --values custom-values.yaml --upgrade
+```
+
+**Alternative manual installation:**
+```bash
+# Create namespace
+kubectl create namespace mcp-servers
+
+# Install with your API key
+helm install nasdaq-mcp . -n mcp-servers \
+  --set secret.nasdaqApiKey="your_api_key_here" \
+  --create-namespace
+```
+
+### Configuration Options
+
+The Helm chart supports extensive customization through values.yaml:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `image.repository` | Docker image repository | `bfljerum/nasdaq-data-link-mcp` |
+| `image.tag` | Docker image tag | `latest` |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
+| `mcp.transport` | MCP transport protocol | `sse` |
+| `mcp.server.host` | Server bind host | `0.0.0.0` |
+| `mcp.server.port` | Server bind port | `8000` |
+| `service.type` | Kubernetes service type | `ClusterIP` |
+| `service.port` | Service port | `8000` |
+| `ingress.enabled` | Enable ingress | `false` |
+| `resources.limits.cpu` | CPU limit | `500m` |
+| `resources.limits.memory` | Memory limit | `512Mi` |
+| `secret.create` | Create secret for API key | `true` |
+| `secret.nasdaqApiKey` | Your Nasdaq API key | `""` |
+
+### Production Deployment
+
+**1. Copy production values:**
+```bash
+cp examples/values-prod.yaml.example my-production-values.yaml
+```
+
+**2. Edit the configuration:**
+```yaml
+# my-production-values.yaml
+image:
+  tag: "v0.2.4"  # Use specific version for production
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+secret:
+  nasdaqApiKey: "your_production_api_key_here"
+
+# Enable ingress for external access
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: nasdaq-mcp.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+```
+
+**3. Deploy to production:**
+```bash
+helm install nasdaq-mcp . -n mcp-servers -f my-production-values.yaml
+```
+
+### Development Deployment
+
+For development environments:
+```bash
+cp examples/values-dev.yaml.example my-dev-values.yaml
+# Edit as needed
+helm install nasdaq-mcp-dev . -n mcp-servers -f my-dev-values.yaml
+```
+
+### Helm Management Commands
+
+**Check deployment status:**
+```bash
+helm status nasdaq-mcp -n mcp-servers
+```
+
+**View deployed values:**
+```bash
+helm get values nasdaq-mcp -n mcp-servers
+```
+
+**Upgrade deployment:**
+```bash
+helm upgrade nasdaq-mcp . -n mcp-servers \
+  --set image.tag=v0.2.4 \
+  --set secret.nasdaqApiKey="your_api_key"
+```
+
+**Uninstall:**
+```bash
+# Using the enhanced uninstall script (recommended)
+./uninstall.sh --help  # Show options
+./uninstall.sh         # Basic uninstall with prompts
+./uninstall.sh nasdaq-mcp --keep-namespace  # Keep namespace
+./uninstall.sh --dry-run  # Preview what would be deleted
+
+# Manual uninstall
+helm uninstall nasdaq-mcp -n mcp-servers
+```
+
+**Dry run (preview changes):**
+```bash
+helm template nasdaq-mcp . -n mcp-servers \
+  --set secret.nasdaqApiKey="test_key"
+```
+
+### Accessing the Service
+
+**1. Port forwarding (for testing):**
+```bash
+kubectl port-forward service/nasdaq-mcp-nasdaq-data-link-mcp 8080:8000 -n mcp-servers
+```
+Then access at `http://localhost:8080`
+
+**2. Internal cluster access:**
+```bash
+# Service URL for other pods in the cluster
+http://nasdaq-mcp-nasdaq-data-link-mcp.mcp-servers.svc.cluster.local:8000
+```
+
+**3. External access (with ingress):**
+Configure ingress in your values file to expose the service externally.
+
+### Monitoring and Troubleshooting
+
+**Check pod status:**
+```bash
+kubectl get pods -n mcp-servers
+```
+
+**View logs:**
+```bash
+kubectl logs -f deployment/nasdaq-mcp-nasdaq-data-link-mcp -n mcp-servers
+```
+
+**Check service endpoints:**
+```bash
+kubectl get endpoints -n mcp-servers
+```
+
+**Describe pod for debugging:**
+```bash
+kubectl describe pod <pod-name> -n mcp-servers
+```
+
+### Security Features
+
+- **🔐 Non-root execution**: Runs as user ID 1001
+- **🛡️ Security contexts**: Restricted privileges
+- **🔒 Secret management**: API keys stored in Kubernetes secrets
+- **📋 Network policies**: Configurable network restrictions
+- **🩺 Health probes**: TCP socket health checks on port 8000
+
+### High Availability Setup
+
+For production high availability:
+```yaml
+replicaCount: 3
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+nodeSelector:
+  kubernetes.io/arch: amd64
+
+tolerations:
+  - key: "high-memory"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+```
 
 ---
 
@@ -871,6 +1345,57 @@ graph TD
 
 B -.->|Equities 360| G
 ```
+
+---
+
+## 📋 Release Notes
+
+### v0.2.4 (Latest)
+**🚀 Production-Ready Kubernetes Deployment**
+
+**New Features:**
+- ✅ **Kubernetes Support**: Complete Helm chart for production deployments
+- ✅ **Multi-platform Docker**: AMD64 and ARM64 support for all environments  
+- ✅ **Enhanced Host Configuration**: Server properly binds to `0.0.0.0` for Kubernetes compatibility
+- ✅ **Production Hardening**: Security contexts, health probes, and non-root execution
+- ✅ **Enhanced Installation Scripts**: Comprehensive install/uninstall scripts with advanced options
+- ✅ **Helm Templates**: Development and production example configurations
+
+**Improvements:**
+- 🔧 **Fixed Host Binding**: Server now correctly respects `--host` and `--port` arguments
+- 🔧 **Helm Chart**: Full Kubernetes deployment with configurable values
+- 🔧 **Docker Multi-stage**: Optimized build process and smaller image size
+- 🔧 **Security**: Non-root user (ID 1001), proper file permissions, and security contexts
+- 🔧 **Health Checks**: TCP socket probes for reliable Kubernetes health monitoring
+- 🔧 **Enhanced Scripts**: Install script with upgrade support, image tag selection, custom values
+- 🔧 **Smart Uninstall**: Uninstall script with dry-run mode and namespace cleanup options
+
+**Infrastructure:**
+- 🐳 **Docker Hub**: Images published at `bfljerum/nasdaq-data-link-mcp`
+- ☸️ **Kubernetes Ready**: Helm chart with development and production examples
+- 📊 **Monitoring**: Built-in health checks and structured logging
+- 🔒 **Security**: Following Kubernetes security best practices
+- 🛠️ **Tooling**: Enhanced install/uninstall scripts for better user experience
+
+**Script Features:**
+- **Install Script**: `--upgrade`, `--image-tag`, `--values`, `--force-pull`, `--dry-run` options
+- **Uninstall Script**: `--dry-run`, `--keep-namespace` options with confirmation prompts
+- **User Experience**: Interactive prompts, colored output, comprehensive help documentation
+
+**Technical Details:**
+- Server now uses direct uvicorn control for proper host/port binding
+- Fixed FastMCP integration to work with Kubernetes networking
+- Enhanced Dockerfile with multi-stage builds and security hardening
+- Comprehensive Helm chart with configurable values and examples
+- Production-grade installation and management scripts
+
+### v0.2.0
+**Initial Release**
+- ✅ Complete MCP server implementation
+- ✅ Support for Nasdaq Data Link databases
+- ✅ Docker containerization
+- ✅ Local development support
+
 ---
 
 ## 📚 References

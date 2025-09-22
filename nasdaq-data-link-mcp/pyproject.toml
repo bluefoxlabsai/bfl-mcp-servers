@@ -15,7 +15,11 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
-dependencies = ["mcp[cli]>=1.6.0", "nasdaq-data-link", "pycountry"]
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "nasdaq-data-link",
+    "pycountry",
+]
 
 [project.optional-dependencies]
 test = ["pytest>=7.0", "pytest-mock", "pytest-cov"]

@@ -1,0 +1,87 @@
+# Development Environment Configuration for Atlassian MCP Server
+# This file provides example values for development deployments
+# Copy this file to values-dev.yaml and customize for your environment
+
+replicaCount: 1
+
+# MCP Server Configuration for development
+mcp:
+  transport: "sse"  # Server-Sent Events for HTTP accessibility
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
+image:
+  repository: bfljerum/atlassian-mcp
+  tag: "latest"  # Use latest for development
+  pullPolicy: Always  # Always pull latest in dev
+
+# Development resources - lower limits for dev environment
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+
+# Ingress disabled in development (use port-forward)
+ingress:
+  enabled: false
+
+# Development secret configuration (NEVER use real credentials in examples)
+secret:
+  create: true
+  name: ""  # Auto-generated name
+  
+  # Confluence Configuration - REPLACE WITH YOUR VALUES
+  confluenceUrl: "https://your-company.atlassian.net/wiki"
+  confluenceUsername: "your.email@company.com"
+  confluenceApiToken: "your_confluence_api_token_here"
+  confluencePersonalToken: ""  # For Server/Data Center installs
+  
+  # Jira Configuration - REPLACE WITH YOUR VALUES
+  jiraUrl: "https://your-company.atlassian.net"
+  jiraUsername: "your.email@company.com"
+  jiraApiToken: "your_jira_api_token_here"
+  jiraPersonalToken: ""  # For Server/Data Center installs
+  
+  # SSL Configuration
+  confluenceSslVerify: "true"
+  jiraSslVerify: "true"
+  
+  # Development Filters (optional)
+  confluenceSpacesFilter: "DEV,TEST"  # Limit to dev/test spaces
+  jiraProjectsFilter: "DEV,TEST"      # Limit to dev/test projects
+  
+  # Development Settings
+  readOnlyMode: "false"     # Allow write operations in dev
+  verboseLogging: "true"    # Enable detailed logging for development
+  enabledTools: ""          # Enable all tools by default
+
+# Security context - relaxed for development
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Volume configuration
+volumes:
+- name: logs
+  emptyDir: {}
+

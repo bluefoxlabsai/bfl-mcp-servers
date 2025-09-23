@@ -1,0 +1,184 @@
+# Production Environment Configuration for Atlassian MCP Server
+# This file provides example values for production deployments
+# Copy this file to values-prod.yaml and customize for your environment
+
+replicaCount: 3  # Higher replica count for production
+
+# MCP Server Configuration for production
+mcp:
+  transport: "sse"  # Server-Sent Events for HTTP accessibility
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
+image:
+  repository: bfljerum/atlassian-mcp
+  tag: "v1.0.0"  # Use specific version tag in production, never 'latest'
+  pullPolicy: IfNotPresent
+
+# Production resources - higher limits for production workload
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8000
+
+# Production ingress with TLS (customize for your domain)
+ingress:
+  enabled: true
+  className: "nginx"  # or your ingress class
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # if using cert-manager
+    nginx.ingress.kubernetes.io/rate-limit-requests-per-second: "10"
+  hosts:
+    - host: atlassian-mcp.yourdomain.com  # REPLACE with your domain
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: atlassian-mcp-tls
+      hosts:
+        - atlassian-mcp.yourdomain.com  # REPLACE with your domain
+
+# Gateway API HTTPRoute configuration (alternative to Ingress)
+httpRoute:
+  enabled: false  # Enable if using Gateway API instead of Ingress
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "atlassian-mcp.yourdomain.com"
+  parentRefs:
+  - name: your-gateway  # REPLACE with your gateway name
+    namespace: istio-system  # or your gateway namespace
+    sectionName: http
+  hostnames:
+  - atlassian-mcp.yourdomain.com  # REPLACE with your domain
+
+# PRODUCTION SECURITY: Use existing secret (create manually, never in values)
+secret:
+  create: false  # Don't create via Helm in production
+  name: "atlassian-mcp-credentials"  # Name of pre-created secret
+  
+  # These values are ignored when create=false, but kept for documentation
+  # Create the secret manually with kubectl:
+  # kubectl create secret generic atlassian-mcp-credentials \
+  #   --from-literal=confluence-url="https://your-company.atlassian.net/wiki" \
+  #   --from-literal=confluence-username="service-account@your-company.com" \
+  #   --from-literal=confluence-api-token="your_token" \
+  #   --from-literal=jira-url="https://your-company.atlassian.net" \
+  #   --from-literal=jira-username="service-account@your-company.com" \
+  #   --from-literal=jira-api-token="your_token" \
+  #   --namespace your-namespace
+
+# Production security context - hardened
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false  # App needs to write logs
+  runAsNonRoot: true
+  runAsUser: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+# Volume configuration for logs with retention
+volumes:
+- name: logs
+  emptyDir:
+    sizeLimit: 1Gi  # Limit log volume size
+
+volumeMounts:
+- name: logs
+  mountPath: "/app/logs"
+
+# Production annotations for monitoring and management
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"  # if metrics endpoint is available
+  
+# Production labels
+podLabels:
+  app: atlassian-mcp
+  environment: production
+  version: "1.0.0"
+
+# Horizontal Pod Autoscaler for production load
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Production node affinity - spread across nodes
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - atlassian-mcp
+        topologyKey: kubernetes.io/hostname
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 50
+      preference:
+        matchExpressions:
+        - key: node-type
+          operator: In
+          values:
+          - worker  # Prefer worker nodes over master nodes
+
+# Production tolerations for dedicated nodes (if applicable)
+tolerations:
+# - key: "dedicated"
+#   operator: "Equal"
+#   value: "atlassian-mcp"
+#   effect: "NoSchedule"
+
+# Node selector for production workloads
+nodeSelector:
+  # kubernetes.io/arch: amd64  # Specify architecture if needed
+  # node-type: worker          # Target worker nodes
+
+# Enhanced liveness and readiness probes for production
+livenessProbe:
+  enabled: true
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 60    # Longer delay in production
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1

@@ -1,0 +1,55 @@
+{{- if eq .Values.mcp.transport "stdio" }}
+1. Get the pod name and connect to the MCP server:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "atlassian-mcp.selectorLabels" . }}" -o jsonpath="{.items[0].metadata.name}")
+  
+2. To run the MCP server interactively:
+  kubectl exec -it $POD_NAME --namespace {{ .Release.Namespace }} -- uv run mcp-atlassian
+
+3. To test the server:
+  kubectl exec -it $POD_NAME --namespace {{ .Release.Namespace }} -- uv run mcp-atlassian --help
+
+4. For MCP client integration, use kubectl as transport:
+   {
+     "mcpServers": {
+       "atlassian-mcp": {
+         "command": "kubectl",
+         "args": [
+           "exec", "-i", "POD_NAME", "--namespace", "{{ .Release.Namespace }}", "--",
+           "uv", "run", "mcp-atlassian"
+         ]
+       }
+     }
+   }
+
+Note: This MCP server uses stdio transport protocol and is accessed via kubectl exec.
+{{- else }}
+1. Get the service URL:
+{{- if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "atlassian-mcp.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo "MCP Server URL: http://$NODE_IP:$NODE_PORT"
+{{- else if contains "LoadBalancer" .Values.service.type }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "atlassian-mcp.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo "MCP Server URL: http://$SERVICE_IP:{{ .Values.service.port }}"
+{{- else if contains "ClusterIP" .Values.service.type }}
+  echo "To access the MCP server, port-forward the service:"
+  kubectl --namespace {{ .Release.Namespace }} port-forward service/{{ include "atlassian-mcp.fullname" . }} 8080:{{ .Values.service.port }}
+  echo "MCP Server URL: http://localhost:8080"
+{{- end }}
+
+2. Health check endpoint:
+  curl http://localhost:8080/health
+
+3. For MCP client integration, use SSE transport:
+   {
+     "mcpServers": {
+       "atlassian-mcp": {
+         "command": "npx",
+         "args": ["-y", "@modelcontextprotocol/server-stdio", "sse://{{ include "atlassian-mcp.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}"]
+       }
+     }
+   }
+
+Note: This MCP server uses {{ .Values.mcp.transport }} transport protocol and provides Jira & Confluence integration.
+{{- end }}

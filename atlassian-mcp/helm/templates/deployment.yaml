@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "atlassian-mcp.fullname" . }}
+  labels:
+    {{- include "atlassian-mcp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "atlassian-mcp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "atlassian-mcp.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "atlassian-mcp.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq .Values.mcp.transport "stdio" }}
+          command: ["/bin/sh", "-c"]
+          args: 
+            - |
+              echo "Atlassian MCP Server is ready (stdio mode)"
+              echo "This server uses MCP (Model Context Protocol) via stdio"
+              echo "To connect, use: kubectl exec -it <pod-name> -- uv run mcp-atlassian"
+              echo "Atlassian credentials are configured and ready"
+              
+              # Keep container running for exec access
+              while true; do
+                sleep 300
+                echo "MCP Server container is running - $(date)"
+              done
+          {{- else }}
+          # Use the Dockerfile entrypoint which runs: uv run mcp-atlassian --transport sse --verbose --host 0.0.0.0 --port 8000
+          {{- end }}
+          env:
+            - name: PYTHONPATH
+              value: "/app"
+            {{- if .Values.secret.create }}
+            # Confluence Configuration
+            {{- if .Values.secret.confluenceUrl }}
+            - name: CONFLUENCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: confluence-url
+            {{- end }}
+            {{- if .Values.secret.confluenceUsername }}
+            - name: CONFLUENCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: confluence-username
+            {{- end }}
+            {{- if .Values.secret.confluenceApiToken }}
+            - name: CONFLUENCE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: confluence-api-token
+            {{- end }}
+            {{- if .Values.secret.confluencePersonalToken }}
+            - name: CONFLUENCE_PERSONAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: confluence-personal-token
+            {{- end }}
+            # Jira Configuration
+            {{- if .Values.secret.jiraUrl }}
+            - name: JIRA_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: jira-url
+            {{- end }}
+            {{- if .Values.secret.jiraUsername }}
+            - name: JIRA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: jira-username
+            {{- end }}
+            {{- if .Values.secret.jiraApiToken }}
+            - name: JIRA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: jira-api-token
+            {{- end }}
+            {{- if .Values.secret.jiraPersonalToken }}
+            - name: JIRA_PERSONAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlassian-mcp.secretName" . }}
+                  key: jira-personal-token
+            {{- end }}
+            # SSL Configuration
+            {{- if .Values.secret.confluenceSslVerify }}
+            - name: CONFLUENCE_SSL_VERIFY
+              value: {{ .Values.secret.confluenceSslVerify | quote }}
+            {{- end }}
+            {{- if .Values.secret.jiraSslVerify }}
+            - name: JIRA_SSL_VERIFY
+              value: {{ .Values.secret.jiraSslVerify | quote }}
+            {{- end }}
+            # Optional Configuration
+            {{- if .Values.secret.confluenceSpacesFilter }}
+            - name: CONFLUENCE_SPACES_FILTER
+              value: {{ .Values.secret.confluenceSpacesFilter | quote }}
+            {{- end }}
+            {{- if .Values.secret.jiraProjectsFilter }}
+            - name: JIRA_PROJECTS_FILTER
+              value: {{ .Values.secret.jiraProjectsFilter | quote }}
+            {{- end }}
+            {{- if .Values.secret.readOnlyMode }}
+            - name: READ_ONLY_MODE
+              value: {{ .Values.secret.readOnlyMode | quote }}
+            {{- end }}
+            {{- if .Values.secret.verboseLogging }}
+            - name: MCP_VERBOSE
+              value: {{ .Values.secret.verboseLogging | quote }}
+            {{- end }}
+            {{- if .Values.secret.enabledTools }}
+            - name: ENABLED_TOOLS
+              value: {{ .Values.secret.enabledTools | quote }}
+            {{- end }}
+            {{- end }}
+          {{- if eq .Values.mcp.transport "sse" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.server.port }}
+              protocol: TCP
+          {{- end }}
+          {{- if and .Values.livenessProbe.enabled (eq .Values.mcp.transport "sse") }}
+          livenessProbe:
+            {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.readinessProbe.enabled (eq .Values.mcp.transport "sse") }}
+          readinessProbe:
+            {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

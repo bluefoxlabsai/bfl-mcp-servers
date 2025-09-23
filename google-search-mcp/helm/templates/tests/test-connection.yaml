@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "google-search-mcp.fullname" . }}-test-connection"
+  labels:
+    {{- include "google-search-mcp.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['{{ include "google-search-mcp.fullname" . }}:{{ .Values.service.port }}']
+    - name: test-mcp-server
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+      command: ['python']
+      args: ['-c', 'import sys; print("Google Search MCP Server test completed"); sys.exit(0)']

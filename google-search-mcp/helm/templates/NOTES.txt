@@ -1,65 +1,85 @@
-🎉 Google Search MCP Server has been deployed!
+{{- if eq .Values.mcp.transport "stdio" }}
+1. Get the pod name and connect to the MCP server:
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "{{ include "google-search-mcp.selectorLabels" . }}" -o jsonpath="{.items[0].metadata.name}")
+  
+2. To run the MCP server interactively:
+  kubectl exec -it $POD_NAME --namespace {{ .Release.Namespace }} -- python {{ include "google-search-mcp.serverScript" . }}
 
-✅ Release: {{ .Release.Name }}
-✅ Namespace: {{ .Release.Namespace }}
+3. To test the server:
+  kubectl exec -it $POD_NAME --namespace {{ .Release.Namespace }} -- python {{ include "google-search-mcp.serverScript" . }} --help
 
-📋 To get the application status:
-   kubectl get all -l "app.kubernetes.io/name={{ include "google-search-mcp-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
+4. For MCP client integration, use kubectl as transport:
+   {
+     "mcpServers": {
+       "google-search-mcp": {
+         "command": "kubectl",
+         "args": [
+           "exec", "-i", "POD_NAME", "--namespace", "{{ .Release.Namespace }}", "--",
+           "python", "{{ include "google-search-mcp.serverScript" . }}"
+         ]
+       }
+     }
+   }
 
-🔍 To check if the deployment is ready:
-   kubectl get deployment {{ include "google-search-mcp-server.fullname" . }} -n {{ .Release.Namespace }}
-
-📊 To view logs:
-   kubectl logs -l "app.kubernetes.io/name={{ include "google-search-mcp-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -n {{ .Release.Namespace }}
-
-{{- if .Values.ingress.enabled }}
-🌐 Your application is accessible via Ingress:
-{{- range $host := .Values.ingress.hosts }}
-  {{- range .paths }}
-  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
-  {{- end }}
+{{- if eq .Values.mcp.serverType "enhanced" }}
+5. Available enhanced search tools:
+   - search_google: Comprehensive web search with pagination and localization
+   - search_images: Image search with size/type filters
+   - search_by_date_range: Date-filtered search
+   - search_site_specific: Site-restricted search
+   - search_file_type: File type search (PDF, DOC, etc.)
+   - search_related: Find related pages
+   - search_cached: Get cached page versions
+   - get_search_suggestions: Get search suggestions
+   - get_api_status: Check API configuration and quota
+{{- else }}
+5. Available tools:
+   - search_google: Basic Google search
 {{- end }}
-{{- else if contains "NodePort" .Values.service.type }}
-🌐 Get the application URL by running these commands:
-  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "google-search-mcp-server.fullname" . }})
+
+Note: This MCP server uses stdio transport protocol and is accessed via kubectl exec.
+{{- else }}
+1. Get the service URL:
+{{- if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "google-search-mcp.fullname" . }})
   export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
-  echo http://$NODE_IP:$NODE_PORT
+  echo "MCP Server URL: http://$NODE_IP:$NODE_PORT"
 {{- else if contains "LoadBalancer" .Values.service.type }}
-🌐 Get the application URL by running these commands:
-     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "google-search-mcp-server.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "google-search-mcp-server.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
-  echo http://$SERVICE_IP:{{ .Values.service.port }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "google-search-mcp.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "google-search-mcp.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo "MCP Server URL: http://$SERVICE_IP:{{ .Values.service.port }}"
 {{- else if contains "ClusterIP" .Values.service.type }}
-🌐 Get the application URL by running these commands:
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "google-search-mcp-server.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
-  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-  echo "Visit http://127.0.0.1:8080 to use your application"
-  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+  echo "To access the MCP server, port-forward the service:"
+  kubectl --namespace {{ .Release.Namespace }} port-forward service/{{ include "google-search-mcp.fullname" . }} 8080:{{ .Values.service.port }}
+  echo "MCP Server URL: http://localhost:8080"
 {{- end }}
 
-⚙️ Configuration:
-   - Google API Key: {{ if .Values.googleApi.apiKey }}✅ Configured{{ else }}❌ Not set{{ end }}
-   - Google CSE ID: {{ if .Values.googleApi.cseId }}✅ Configured{{ else }}❌ Not set{{ end }}
+2. Health check endpoint (for HTTP transports):
+  curl http://localhost:8080
 
-{{- if not .Values.googleApi.apiKey }}
-⚠️  WARNING: Google API Key is not configured!
-   Please set your Google API key by upgrading the release:
-   helm upgrade {{ .Release.Name }} . --set googleApi.apiKey="your-api-key-here"
+3. For LibreChat integration, use {{ .Values.mcp.transport }} transport:
+   mcpServers:
+     google-search-mcp:
+       type: "{{ .Values.mcp.transport }}"
+       url: "http://{{ include "google-search-mcp.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.service.port }}"
+       timeout: 30000
+
+{{- if eq .Values.mcp.serverType "enhanced" }}
+4. Available enhanced search tools:
+   - search_google: Comprehensive web search with pagination and localization
+   - search_images: Image search with size/type filters
+   - search_by_date_range: Date-filtered search
+   - search_site_specific: Site-restricted search
+   - search_file_type: File type search (PDF, DOC, etc.)
+   - search_related: Find related pages
+   - search_cached: Get cached page versions
+   - get_search_suggestions: Get search suggestions
+   - get_api_status: Check API configuration and quota
+{{- else }}
+4. Available tools:
+   - search_google: Basic Google search
 {{- end }}
 
-{{- if not .Values.googleApi.cseId }}
-⚠️  WARNING: Google CSE ID is not configured!
-   Please set your Google Custom Search Engine ID by upgrading the release:
-   helm upgrade {{ .Release.Name }} . --set googleApi.cseId="your-cse-id-here"
+Note: This MCP server uses {{ .Values.mcp.transport }} transport protocol.
 {{- end }}
-
-📚 For more information:
-   - Documentation: https://github.com/hubbertj/google-search-mcp-server
-   - MCP Protocol: https://modelcontextprotocol.io
-
-🔧 To upgrade this release:
-   helm upgrade {{ .Release.Name }} . --values values.yaml
-
-🗑️  To uninstall this release:
-   helm uninstall {{ .Release.Name }}

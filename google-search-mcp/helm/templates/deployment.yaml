@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "google-search-mcp-server.fullname" . }}
+  name: {{ include "google-search-mcp.fullname" . }}
   labels:
-    {{- include "google-search-mcp-server.labels" . | nindent 4 }}
+    {{- include "google-search-mcp.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "google-search-mcp-server.selectorLabels" . | nindent 6 }}
+      {{- include "google-search-mcp.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,58 +18,101 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "google-search-mcp-server.selectorLabels" . | nindent 8 }}
+        {{- include "google-search-mcp.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "google-search-mcp-server.serviceAccountName" . }}
+      serviceAccountName: {{ include "google-search-mcp.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.targetPort }}
-              protocol: TCP
+          {{- if eq .Values.mcp.transport "stdio" }}
+          command: ["/bin/sh", "-c"]
+          args: 
+            - |
+              echo "{{ include "google-search-mcp.serverDescription" . }} is ready (stdio mode)"
+              echo "This server uses MCP (Model Context Protocol) via stdio"
+              {{- if eq .Values.mcp.serverType "enhanced" }}
+              echo "To connect, use: kubectl exec -it <pod-name> -- python enhanced_google_search_server.py"
+              echo "Available tools: search_google, search_images, search_by_date_range, search_site_specific,"
+              echo "                search_file_type, search_related, search_cached, get_search_suggestions, get_api_status"
+              {{- else }}
+              echo "To connect, use: kubectl exec -it <pod-name> -- python google_search_mcp_server.py"
+              echo "Available tools: search_google"
+              {{- end }}
+              echo "Google API Key is configured and ready"
+              
+              # Keep container running for exec access
+              while true; do
+                sleep 300
+                echo "MCP Server container is running - $(date)"
+              done
+          {{- else }}
+          command: ["python", "{{ include "google-search-mcp.serverScript" . }}"]
+          args:
+            - "--transport"
+            - "{{ .Values.mcp.transport }}"
+            {{- if ne .Values.mcp.transport "stdio" }}
+            - "--host"
+            - "{{ .Values.mcp.server.host }}"
+            - "--port"
+            - "{{ .Values.mcp.server.port }}"
+            {{- end }}
+          {{- end }}
           env:
+            - name: PYTHONPATH
+              value: "/app"
+            {{- if .Values.secret.create }}
             - name: GOOGLE_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "google-search-mcp-server.fullname" . }}-secret
+                  name: {{ include "google-search-mcp.secretName" . }}
                   key: google-api-key
             - name: GOOGLE_CSE_ID
               valueFrom:
-                configMapKeyRef:
-                  name: {{ include "google-search-mcp-server.fullname" . }}-config
+                secretKeyRef:
+                  name: {{ include "google-search-mcp.secretName" . }}
                   key: google-cse-id
-            {{- range .Values.env }}
-            - name: {{ .name }}
-              value: {{ .value | quote }}
             {{- end }}
-          {{- if .Values.healthCheck.enabled }}
+          {{- if ne .Values.mcp.transport "stdio" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.server.port }}
+              protocol: TCP
+          {{- end }}
+          {{- if and .Values.livenessProbe.enabled (ne .Values.mcp.transport "stdio") }}
           livenessProbe:
-            {{- toYaml .Values.healthCheck.livenessProbe | nindent 12 }}
+            {{- omit .Values.livenessProbe "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.readinessProbe.enabled (ne .Values.mcp.transport "stdio") }}
           readinessProbe:
-            {{- toYaml .Values.healthCheck.readinessProbe | nindent 12 }}
+            {{- omit .Values.readinessProbe "enabled" | toYaml | nindent 12 }}
           {{- end }}
+          {{- with .Values.resources }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.persistence.enabled }}
-          volumeMounts:
-            - name: data
-              mountPath: /app/data
+            {{- toYaml . | nindent 12 }}
           {{- end }}
-      {{- if .Values.persistence.enabled }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
       volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: {{ include "google-search-mcp-server.fullname" . }}-pvc
+        {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

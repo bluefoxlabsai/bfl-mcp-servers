@@ -1,0 +1,198 @@
+# Enhanced Google Search MCP Server Makefile
+
+# Variables
+IMAGE_NAME := bfljerum/enhanced-google-search-mcp
+VERSION := v0.1.0
+DOCKER_PLATFORM := linux/amd64,linux/arm64
+
+# Default target
+.DEFAULT_GOAL := help
+
+# Help target
+.PHONY: help
+help: ## Show this help message
+	@echo "Enhanced Google Search MCP Server"
+	@echo "================================="
+	@echo ""
+	@echo "Available commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+# Development targets
+.PHONY: install
+install: ## Install dependencies with uv
+	uv sync
+
+.PHONY: install-dev
+install-dev: ## Install development dependencies
+	uv sync --dev
+
+.PHONY: test
+test: ## Run test suite
+	@echo "🧪 Running enhanced server tests..."
+	python test_enhanced_server.py
+
+.PHONY: run
+run: ## Run the enhanced server locally
+	@echo "🚀 Starting enhanced Google Search MCP server..."
+	uv run enhanced_google_search_server.py
+
+.PHONY: run-basic
+run-basic: ## Run the basic server locally
+	@echo "🚀 Starting basic Google Search MCP server..."
+	uv run google_search_mcp_server.py
+
+.PHONY: lint
+lint: ## Run linting checks
+	@echo "🔍 Running linting checks..."
+	uv run ruff check .
+	uv run mypy . --ignore-missing-imports
+
+.PHONY: format
+format: ## Format code with ruff
+	@echo "🎨 Formatting code..."
+	uv run ruff format .
+
+.PHONY: check-env
+check-env: ## Check environment variables
+	@echo "🔧 Checking environment configuration..."
+	@if [ -z "$$GOOGLE_API_KEY" ] && [ -z "$$GOOGLE_SEARCH_API_KEY" ]; then \
+		echo "❌ GOOGLE_API_KEY not set"; \
+	else \
+		echo "✅ Google API Key configured"; \
+	fi
+	@if [ -z "$$GOOGLE_CSE_ID" ]; then \
+		echo "❌ GOOGLE_CSE_ID not set"; \
+	else \
+		echo "✅ Google CSE ID configured"; \
+	fi
+
+# Docker targets
+.PHONY: docker-build
+docker-build: ## Build Docker image for enhanced server
+	@echo "🐳 Building enhanced server Docker image..."
+	docker build -f Dockerfile.enhanced -t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest .
+
+.PHONY: docker-build-multiplatform
+docker-build-multiplatform: ## Build multi-platform Docker image
+	@echo "🐳 Building multi-platform Docker image..."
+	docker buildx build --platform $(DOCKER_PLATFORM) -f Dockerfile.enhanced \
+		-t $(IMAGE_NAME):$(VERSION) -t $(IMAGE_NAME):latest --push .
+
+.PHONY: docker-run
+docker-run: ## Run Docker container
+	@echo "🐳 Running Docker container..."
+	docker run -p 8000:8000 \
+		-e GOOGLE_API_KEY="$$GOOGLE_API_KEY" \
+		-e GOOGLE_CSE_ID="$$GOOGLE_CSE_ID" \
+		$(IMAGE_NAME):latest
+
+.PHONY: docker-test
+docker-test: ## Test Docker container
+	@echo "🧪 Testing Docker container..."
+	docker run --rm \
+		-e GOOGLE_API_KEY="$$GOOGLE_API_KEY" \
+		-e GOOGLE_CSE_ID="$$GOOGLE_CSE_ID" \
+		$(IMAGE_NAME):latest python test_enhanced_server.py
+
+.PHONY: docker-push
+docker-push: ## Push Docker image to registry
+	@echo "📤 Pushing Docker image..."
+	docker push $(IMAGE_NAME):$(VERSION)
+	docker push $(IMAGE_NAME):latest
+
+.PHONY: docker-clean
+docker-clean: ## Clean up Docker images
+	@echo "🧹 Cleaning up Docker images..."
+	docker rmi $(IMAGE_NAME):$(VERSION) $(IMAGE_NAME):latest || true
+	docker system prune -f
+
+# Kubernetes targets
+.PHONY: k8s-deploy
+k8s-deploy: ## Deploy to Kubernetes using existing helm chart
+	@echo "☸️ Deploying to Kubernetes..."
+	cd helm && helm upgrade --install enhanced-google-search . \
+		--set image.repository=$(IMAGE_NAME) \
+		--set image.tag=$(VERSION) \
+		--set secret.googleApiKey="$$GOOGLE_API_KEY" \
+		--set secret.googleCseId="$$GOOGLE_CSE_ID" \
+		--create-namespace --namespace mcp-servers
+
+.PHONY: k8s-status
+k8s-status: ## Check Kubernetes deployment status
+	@echo "📊 Checking Kubernetes deployment status..."
+	kubectl get pods -n mcp-servers -l app.kubernetes.io/name=google-search-mcp
+
+.PHONY: k8s-logs
+k8s-logs: ## View Kubernetes pod logs
+	@echo "📋 Viewing pod logs..."
+	kubectl logs -n mcp-servers -l app.kubernetes.io/name=google-search-mcp -f
+
+.PHONY: k8s-delete
+k8s-delete: ## Delete Kubernetes deployment
+	@echo "🗑️ Deleting Kubernetes deployment..."
+	helm uninstall enhanced-google-search -n mcp-servers
+
+# Development workflow
+.PHONY: dev-setup
+dev-setup: install check-env ## Complete development setup
+	@echo "🔧 Development environment setup complete!"
+
+.PHONY: dev-test
+dev-test: check-env test ## Run development tests
+	@echo "✅ Development tests complete!"
+
+.PHONY: dev-docker
+dev-docker: docker-build docker-test ## Build and test Docker image
+	@echo "🐳 Docker development cycle complete!"
+
+.PHONY: dev-deploy
+dev-deploy: docker-build docker-push k8s-deploy ## Full deployment cycle
+	@echo "🚀 Deployment complete!"
+
+# CI/CD targets
+.PHONY: ci-test
+ci-test: install test lint ## CI test pipeline
+	@echo "🤖 CI tests complete!"
+
+.PHONY: cd-deploy
+cd-deploy: docker-build-multiplatform k8s-deploy ## CD deployment pipeline
+	@echo "🚀 CD deployment complete!"
+
+# Cleanup targets
+.PHONY: clean
+clean: ## Clean up build artifacts
+	@echo "🧹 Cleaning up..."
+	rm -rf __pycache__/
+	rm -rf .pytest_cache/
+	rm -rf .ruff_cache/
+	rm -rf *.pyc
+	rm -rf .coverage
+
+.PHONY: clean-all
+clean-all: clean docker-clean ## Complete cleanup
+	@echo "🧹 Complete cleanup finished!"
+
+# Development utilities
+.PHONY: shell
+shell: ## Start interactive shell with dependencies loaded
+	@echo "🐚 Starting development shell..."
+	uv run python
+
+.PHONY: api-docs
+api-docs: ## Display API documentation
+	@echo "📚 API Documentation:"
+	@echo "===================="
+	@uv run python -c "import asyncio; from enhanced_google_search_server import get_api_docs; print(asyncio.run(get_api_docs()))"
+
+.PHONY: status
+status: check-env ## Show comprehensive status
+	@echo "📊 Enhanced Google Search MCP Server Status"
+	@echo "==========================================="
+	@echo ""
+	@$(MAKE) check-env
+	@echo ""
+	@echo "🐳 Docker images:"
+	@docker images $(IMAGE_NAME) || echo "No Docker images found"
+	@echo ""
+	@echo "☸️ Kubernetes status:"
+	@kubectl get pods -n mcp-servers -l app.kubernetes.io/name=google-search-mcp || echo "No Kubernetes deployment found"

@@ -19,6 +19,7 @@ Repository = "https://github.com/gradusnikov/google-search-mcp-server"
 
 [project.scripts]
 google-search-mcp-server = "google_search_mcp_server:main"
+enhanced-google-search-server = "enhanced_google_search_server:main"
 
 [build-system]
 requires = ["hatchling"]

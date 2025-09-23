@@ -1,9 +1,22 @@
+{{- $serviceEnabled := false }}
+{{- if kindIs "string" .Values.service.enabled }}
+  {{- if eq .Values.service.enabled "auto" }}
+    {{- if ne .Values.mcp.transport "stdio" }}
+      {{- $serviceEnabled = true }}
+    {{- end }}
+  {{- else if eq .Values.service.enabled "true" }}
+    {{- $serviceEnabled = true }}
+  {{- end }}
+{{- else if .Values.service.enabled }}
+  {{- $serviceEnabled = true }}
+{{- end }}
+{{- if $serviceEnabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "google-search-mcp-server.fullname" . }}
+  name: {{ include "google-search-mcp.fullname" . }}
   labels:
-    {{- include "google-search-mcp-server.labels" . | nindent 4 }}
+    {{- include "google-search-mcp.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,4 +25,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "google-search-mcp-server.selectorLabels" . | nindent 4 }}
+    {{- include "google-search-mcp.selectorLabels" . | nindent 4 }}
+{{- end }}

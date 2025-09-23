@@ -1,0 +1,193 @@
+{
+  "name": "Enhanced Google Search MCP Server",
+  "version": "0.1.0",
+  "description": "Comprehensive Google Custom Search API integration with FastMCP",
+  "server": {
+    "transport": "sse",
+    "host": "0.0.0.0",
+    "port": 8000
+  },
+  "capabilities": {
+    "tools": [
+      {
+        "name": "search_google",
+        "description": "Perform comprehensive Google search with advanced options",
+        "parameters": {
+          "query": "string (required)",
+          "num_results": "integer (1-10, default: 10)",
+          "start_index": "integer (default: 1)",
+          "language": "string (default: en)",
+          "country": "string (default: us)"
+        }
+      },
+      {
+        "name": "search_images",
+        "description": "Search for images using Google Custom Search",
+        "parameters": {
+          "query": "string (required)",
+          "num_results": "integer (1-10, default: 10)",
+          "image_size": "string (huge|icon|large|medium|small|xlarge|xxlarge)",
+          "image_type": "string (clipart|face|lineart|stock|photo|animated)",
+          "safe_search": "string (active|off)"
+        }
+      },
+      {
+        "name": "search_by_date_range",
+        "description": "Search with date range filtering",
+        "parameters": {
+          "query": "string (required)",
+          "start_date": "string (YYYY-MM-DD, required)",
+          "end_date": "string (YYYY-MM-DD, required)",
+          "num_results": "integer (1-10, default: 10)",
+          "sort_by": "string (date|relevance)"
+        }
+      },
+      {
+        "name": "search_site_specific",
+        "description": "Search within specific sites or exclude sites",
+        "parameters": {
+          "query": "string (required)",
+          "site": "string (required)",
+          "num_results": "integer (1-10, default: 10)",
+          "exclude_sites": "array of strings (optional)"
+        }
+      },
+      {
+        "name": "search_file_type",
+        "description": "Search for specific file types",
+        "parameters": {
+          "query": "string (required)",
+          "file_type": "string (pdf|doc|xls|ppt|etc., required)",
+          "num_results": "integer (1-10, default: 10)",
+          "exact_terms": "string (optional)",
+          "exclude_terms": "string (optional)"
+        }
+      },
+      {
+        "name": "search_related",
+        "description": "Find pages related to a specific URL",
+        "parameters": {
+          "url": "string (required)",
+          "num_results": "integer (1-10, default: 10)"
+        }
+      },
+      {
+        "name": "search_cached",
+        "description": "Get cached version of a URL from Google",
+        "parameters": {
+          "url": "string (required)"
+        }
+      },
+      {
+        "name": "get_search_suggestions",
+        "description": "Get search suggestions for a query",
+        "parameters": {
+          "query": "string (required)",
+          "max_suggestions": "integer (default: 10)"
+        }
+      },
+      {
+        "name": "get_api_status",
+        "description": "Check API configuration and quota status",
+        "parameters": {}
+      }
+    ],
+    "resources": [
+      {
+        "name": "google-search-api-docs",
+        "description": "Comprehensive API documentation",
+        "type": "text/markdown"
+      }
+    ]
+  },
+  "environment": {
+    "required": [
+      "GOOGLE_API_KEY",
+      "GOOGLE_CSE_ID"
+    ],
+    "optional": []
+  },
+  "deployment": {
+    "docker": {
+      "image": "bfljerum/enhanced-google-search-mcp",
+      "tag": "latest",
+      "ports": [8000],
+      "environment": [
+        "GOOGLE_API_KEY",
+        "GOOGLE_CSE_ID"
+      ]
+    },
+    "kubernetes": {
+      "helm_chart": "./helm",
+      "namespace": "mcp-servers",
+      "service_name": "enhanced-google-search-mcp"
+    }
+  },
+  "integration": {
+    "librechat": {
+      "type": "streamable-http",
+      "url": "http://enhanced-google-search-mcp.mcp-servers.svc.cluster.local:8000",
+      "timeout": 30000,
+      "startup": true,
+      "chatMenu": true
+    },
+    "continue": {
+      "type": "http",
+      "url": "http://localhost:8000"
+    },
+    "cline": {
+      "type": "sse",
+      "url": "http://localhost:8000"
+    }
+  },
+  "examples": {
+    "basic_search": {
+      "function": "search_google",
+      "parameters": {
+        "query": "artificial intelligence trends 2024",
+        "num_results": 5
+      }
+    },
+    "image_search": {
+      "function": "search_images",
+      "parameters": {
+        "query": "machine learning visualization",
+        "image_size": "large",
+        "image_type": "photo"
+      }
+    },
+    "academic_search": {
+      "function": "search_file_type",
+      "parameters": {
+        "query": "neural networks research",
+        "file_type": "pdf",
+        "exact_terms": "deep learning"
+      }
+    },
+    "github_search": {
+      "function": "search_site_specific",
+      "parameters": {
+        "query": "FastMCP server examples",
+        "site": "github.com"
+      }
+    },
+    "recent_news": {
+      "function": "search_by_date_range",
+      "parameters": {
+        "query": "AI breakthrough",
+        "start_date": "2024-11-01",
+        "end_date": "2024-11-30",
+        "sort_by": "date"
+      }
+    }
+  },
+  "limits": {
+    "google_api": {
+      "free_tier": "100 searches/day",
+      "paid_tier": "10,000 searches/day",
+      "rate_limit": "10 queries/second"
+    },
+    "results_per_query": 10,
+    "pagination_support": true
+  }
+}

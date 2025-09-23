@@ -1,12 +1,19 @@
 apiVersion: v2
-name: google-search-mcp-server
-description: A Helm chart for Google Search MCP Server - A Model Context Protocol server for Google Custom Search
+name: google-search-mcp
+description: A Helm chart for the Google Search MCP Server
 type: application
 version: 0.1.0
-appVersion: "0.1.0"
+appVersion: "1.0.0"
 keywords:
   - mcp
-  - model-context-protocol
-  - google-search
-  - ai
-  - claude
+  - google
+  - search
+  - fastmcp
+  - api
+home: https://github.com/bluefoxlabsai/bfl-mcp-servers/tree/main/google-search-mcp
+sources:
+  - https://github.com/bluefoxlabsai/bfl-mcp-servers
+maintainers:
+  - name: BlueFox Labs
+    email: contact@bluefoxlabs.ai
+    url: https://bluefoxlabs.ai

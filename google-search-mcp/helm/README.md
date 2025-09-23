@@ -101,6 +101,27 @@ export NAMESPACE="mcp-servers"
 ./install.sh
 ```
 
+### Using Environment Variables
+
+You can configure the deployment to use environment variables instead of Kubernetes secrets:
+
+```bash
+# Set environment variables
+export GOOGLE_API_KEY="your_api_key_here"
+export GOOGLE_CSE_ID="your_cse_id_here"
+
+# Install with environment variables
+./install.sh mcp-google-search --use-env-vars
+```
+
+Or via Helm directly:
+```bash
+helm install google-search-mcp ./helm \
+  --set secret.useEnvVars=true \
+  --set secret.googleApiKey="your_api_key_here" \
+  --set secret.googleCseId="your_cse_id_here"
+```
+
 ### Configuring API Keys After Installation
 
 If you didn't provide API keys during installation, you can configure them later:

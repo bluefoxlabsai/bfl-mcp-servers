@@ -1,0 +1,11 @@
+{{- if and .Values.secret.useEnvVars (not .Values.secret.externalConfigMap) .Values.secret.googleApiKey .Values.secret.googleCseId }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "google-search-mcp.fullname" . }}-config
+  labels:
+    {{- include "google-search-mcp.labels" . | nindent 4 }}
+data:
+  GOOGLE_API_KEY: {{ .Values.secret.googleApiKey | quote }}
+  GOOGLE_CSE_ID: {{ .Values.secret.googleCseId | quote }}
+{{- end }}

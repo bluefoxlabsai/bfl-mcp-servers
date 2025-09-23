@@ -76,7 +76,41 @@ spec:
           env:
             - name: PYTHONPATH
               value: "/app"
-            {{- if .Values.secret.create }}
+            {{- if .Values.secret.externalConfigMap }}
+            # Use external ConfigMap for environment variables
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.secret.externalConfigMap }}
+                  key: GOOGLE_API_KEY
+            - name: GOOGLE_CSE_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.secret.externalConfigMap }}
+                  key: GOOGLE_CSE_ID
+            {{- else if .Values.secret.useEnvVars }}
+            # Use environment variables - either directly or via auto-created ConfigMap
+            {{- if and .Values.secret.googleApiKey .Values.secret.googleCseId }}
+            # Use auto-created ConfigMap when both values are provided
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "google-search-mcp.fullname" . }}-config
+                  key: GOOGLE_API_KEY
+            - name: GOOGLE_CSE_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "google-search-mcp.fullname" . }}-config
+                  key: GOOGLE_CSE_ID
+            {{- else }}
+            # Use direct environment variables (from external source)
+            - name: GOOGLE_API_KEY
+              value: ""  # Expected to be set by external means
+            - name: GOOGLE_CSE_ID
+              value: ""  # Expected to be set by external means
+            {{- end }}
+            {{- else if .Values.secret.create }}
+            # Use Kubernetes secrets
             - name: GOOGLE_API_KEY
               valueFrom:
                 secretKeyRef:

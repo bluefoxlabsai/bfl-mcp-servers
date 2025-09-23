@@ -191,9 +191,19 @@ secret:
   create: true
   # Name of the secret (if not created, this should be the name of existing secret)
   name: ""
-  # Google API Key (only used if create is true)
-  # Should be provided via --set-string secret.googleApiKey="your-key" or values file
+  # Google API Key - can be provided via:
+  # 1. Environment variable: GOOGLE_API_KEY
+  # 2. Helm values: --set secret.googleApiKey="your-key"
+  # 3. Values file: googleApiKey: "your-key"
   googleApiKey: ""
-  # Google Custom Search Engine ID (only used if create is true)
-  # Should be provided via --set-string secret.googleCseId="your-cse-id" or values file
+  # Google Custom Search Engine ID - can be provided via:
+  # 1. Environment variable: GOOGLE_CSE_ID  
+  # 2. Helm values: --set secret.googleCseId="your-cse-id"
+  # 3. Values file: googleCseId: "your-cse-id"
   googleCseId: ""
+  # Use environment variables instead of secret values
+  # When true, the deployment will use env vars directly instead of creating a secret
+  useEnvVars: false
+  # Use external ConfigMap for environment variables
+  # When specified, the deployment will reference this ConfigMap for credentials
+  externalConfigMap: ""

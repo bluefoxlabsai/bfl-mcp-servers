@@ -48,6 +48,7 @@ VALUES_FILE=""
 FORCE_PULL=false
 SERVER_TYPE="enhanced"
 TRANSPORT="sse"
+USE_ENV_VARS=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -92,6 +93,10 @@ while [[ $# -gt 0 ]]; do
             FORCE_PULL=true
             shift
             ;;
+        --use-env-vars)
+            USE_ENV_VARS=true
+            shift
+            ;;
         -h|--help)
             echo "Usage: $0 [release-name] [options]"
             echo ""
@@ -102,6 +107,7 @@ while [[ $# -gt 0 ]]; do
             echo "  --server-type=TYPE     Server type: enhanced|basic (default: enhanced)"
             echo "  --transport=TYPE       Transport: sse|streamable-http|stdio (default: sse)"
             echo "  --force-pull           Force pull latest image (sets pullPolicy=Always)"
+            echo "  --use-env-vars         Use environment variables instead of Kubernetes secrets"
             echo "  -f, --values FILE      Specify custom values file"
             echo "  -h, --help             Show this help message"
             echo ""
@@ -253,13 +259,26 @@ fi
 # Build Helm command arguments
 HELM_ARGS=(
     --namespace "$NAMESPACE"
-    --set secret.googleApiKey="$GOOGLE_API_KEY"
-    --set secret.googleCseId="$GOOGLE_CSE_ID"
     --set image.tag="$IMAGE_TAG"
     --set mcp.serverType="$SERVER_TYPE"
     --set mcp.transport="$TRANSPORT"
     --timeout=5m
 )
+
+# Add credential configuration based on method
+if [ "$USE_ENV_VARS" = true ]; then
+    HELM_ARGS+=(--set secret.useEnvVars=true)
+    if [ -n "$GOOGLE_API_KEY" ]; then
+        HELM_ARGS+=(--set secret.googleApiKey="$GOOGLE_API_KEY")
+    fi
+    if [ -n "$GOOGLE_CSE_ID" ]; then
+        HELM_ARGS+=(--set secret.googleCseId="$GOOGLE_CSE_ID")
+    fi
+else
+    # Use traditional secret method
+    HELM_ARGS+=(--set secret.googleApiKey="$GOOGLE_API_KEY")
+    HELM_ARGS+=(--set secret.googleCseId="$GOOGLE_CSE_ID")
+fi
 
 # Add force pull if requested
 if [ "$FORCE_PULL" = true ]; then

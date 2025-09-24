@@ -1,16 +1,16 @@
 # Development Environment Values
 # This file contains values for development environment
 
-# Use HTTP transport for easier testing
+# Use SSE transport for easier testing and better Kubernetes compatibility
 mcp:
-  transport: "http"
+  transport: "sse"
   server:
     host: "0.0.0.0"
     port: 8000
 
-# Enable service for HTTP transport
+# Enable service for SSE transport
 service:
-  enabled: true
+  enabled: "true"
   type: ClusterIP
   port: 8000
 

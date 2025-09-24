@@ -46,6 +46,14 @@ Available Slack MCP Tools:
   • slack_search_channels    - Search for channels
   • slack_search_users       - Search for users
 
+{{- else if eq .Values.mcp.transport "sse" }}
+
+🎉 Slack MCP Server has been deployed in SSE mode!
+
+The server is running with Server-Sent Events transport.
+MCP endpoint available at: /sse
+Health check endpoint: /health
+
 {{- else }}
 
 🎉 Slack MCP Server has been deployed in HTTP mode!

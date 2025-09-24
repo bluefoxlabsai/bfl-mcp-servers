@@ -1,4 +1,4 @@
-"""Example script to demonstrate HTTP transport with the Slack MCP Server."""
+"""Example script to demonstrate SSE transport with the Slack MCP Server."""
 
 import asyncio
 import json
@@ -25,8 +25,8 @@ if not user_token:
     raise ValueError("EXAMPLES_SLACK_USER_TOKEN environment variable is required")
 
 
-class MCPHttpClient:
-    """HTTP client for MCP server."""
+class MCPSSEClient:
+    """SSE client for MCP server."""
     
     def __init__(self, base_url: str):
         self.base_url = base_url
@@ -41,7 +41,7 @@ class MCPHttpClient:
             await self.session.close()
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Call an MCP tool via HTTP."""
+        """Call an MCP tool via SSE."""
         
         mcp_request = {
             "jsonrpc": "2.0",
@@ -53,19 +53,42 @@ class MCPHttpClient:
             }
         }
         
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream"
+        }
+        
         async with self.session.post(
-            f"{self.base_url}/mcp",
+            f"{self.base_url}/sse",
             json=mcp_request,
-            headers={"Content-Type": "application/json"}
+            headers=headers
         ) as response:
             if response.status == 200:
-                return await response.json()
+                # For SSE, we might get streaming response or JSON
+                content_type = response.headers.get('content-type', '')
+                if 'application/json' in content_type:
+                    return await response.json()
+                else:
+                    # Handle SSE stream
+                    text_response = await response.text()
+                    # Try to parse as JSON if it's a single response
+                    try:
+                        return json.loads(text_response)
+                    except json.JSONDecodeError:
+                        # If it's SSE format, extract the JSON data
+                        lines = text_response.strip().split('\n')
+                        for line in lines:
+                            if line.startswith('data: '):
+                                data = line[6:]  # Remove 'data: ' prefix
+                                if data and data != '[DONE]':
+                                    return json.loads(data)
+                        raise Exception("No valid JSON data found in SSE response")
             else:
-                raise Exception(f"HTTP request failed with status {response.status}")
+                raise Exception(f"SSE request failed with status {response.status}")
 
 
 async def start_server(port: int = 3000):
-    """Start the MCP server in HTTP mode."""
+    """Start the MCP server in SSE mode."""
     
     env = os.environ.copy()
     env["SLACK_BOT_TOKEN"] = slack_token
@@ -85,9 +108,9 @@ async def start_server(port: int = 3000):
 
 
 async def main():
-    """Main function to demonstrate HTTP transport."""
+    """Main function to demonstrate SSE transport."""
     
-    print("🚀 Starting Slack MCP Server HTTP example...")
+    print("🚀 Starting Slack MCP Server SSE example...")
     print("=" * 50)
     
     port = 3000
@@ -95,17 +118,17 @@ async def main():
     
     try:
         # Start the server
-        print(f"🌐 Starting MCP server on port {port}...")
+        print(f"🌐 Starting MCP server with SSE transport on port {port}...")
         server_process = await start_server(port)
         
         # Give server time to fully start
         await asyncio.sleep(3)
         
-        # Test HTTP connection
+        # Test SSE connection
         base_url = f"http://localhost:{port}"
         
-        async with MCPHttpClient(base_url) as client:
-            print("📋 Calling slack_get_users tool via HTTP...")
+        async with MCPSSEClient(base_url) as client:
+            print("📋 Calling slack_get_users tool via SSE...")
             
             response = await client.call_tool("slack_get_users", {"limit": 5})
             
@@ -115,7 +138,7 @@ async def main():
                     result_text = content[0].get("text", "")
                     try:
                         users_data = json.loads(result_text)
-                        print(f"✅ Successfully retrieved users via HTTP!")
+                        print(f"✅ Successfully retrieved users via SSE!")
                         print(f"📊 Response metadata:")
                         print(f"   - OK: {users_data.get('ok', False)}")
                         
@@ -123,7 +146,7 @@ async def main():
                         print(f"   - Total members returned: {len(members)}")
                         
                         if members:
-                            print("\n👥 Users list (via HTTP):")
+                            print("\n👥 Users list (via SSE):")
                             print("-" * 30)
                             
                             for i, member in enumerate(members[:3], 1):  # Show first 3 users
@@ -139,9 +162,9 @@ async def main():
                     except json.JSONDecodeError as e:
                         print(f"❌ Failed to parse users data: {e}")
                 else:
-                    print("❌ No content in HTTP response")
+                    print("❌ No content in SSE response")
             else:
-                print(f"❌ Unexpected HTTP response format: {response}")
+                print(f"❌ Unexpected SSE response format: {response}")
     
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -157,7 +180,7 @@ async def main():
                 server_process.kill()
     
     print("\n" + "=" * 50)
-    print("🏁 HTTP example completed!")
+    print("🏁 SSE example completed!")
 
 
 if __name__ == "__main__":

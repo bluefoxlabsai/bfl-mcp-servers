@@ -18,7 +18,7 @@
 #   ./install.sh --upgrade                          # Upgrade existing installation
 #   ./install.sh --image-tag=v0.1.4                # Install with specific image tag
 #   ./install.sh -f values-prod.yaml                # Install with custom values file
-#   ./install.sh --transport=http                   # Install with HTTP transport
+#   ./install.sh --transport=sse                    # Install with SSE transport
 
 set -e
 
@@ -45,7 +45,7 @@ UPGRADE=false
 IMAGE_TAG="latest"
 VALUES_FILE=""
 FORCE_PULL=false
-TRANSPORT="stdio"
+TRANSPORT="sse"
 ENABLE_SERVICE=false
 
 # Parse command line arguments
@@ -98,7 +98,7 @@ Options:
     --upgrade              Upgrade an existing installation
     --image-tag=TAG        Specify the Docker image tag (default: latest)
     --force-pull           Force pull the Docker image even if it exists locally
-    --transport=MODE       Set transport mode: stdio or http (default: stdio)
+    --transport=MODE       Set transport mode: stdio, sse, or http (default: sse)
     --enable-service       Force enable Kubernetes service (auto-enabled for http transport)
     -f, --values=FILE      Specify a custom values file
     -h, --help             Show this help message
@@ -111,7 +111,7 @@ Environment Variables:
 Examples:
     $0                                    # Basic installation with prompts
     $0 my-slack-server                    # Install with custom release name
-    $0 --transport=http                   # Install with HTTP transport
+    $0 --transport=sse                    # Install with SSE transport
     $0 --upgrade                          # Upgrade existing installation
     $0 -f examples/values-prod.yaml       # Install with production values
     SLACK_BOT_TOKEN=xoxb-xxx $0           # Install with pre-set token
@@ -144,14 +144,14 @@ if [[ -z "$RELEASE_NAME" ]]; then
 fi
 
 # Validate transport mode
-if [[ "$TRANSPORT" != "stdio" && "$TRANSPORT" != "http" ]]; then
+if [[ "$TRANSPORT" != "stdio" && "$TRANSPORT" != "http" && "$TRANSPORT" != "sse" ]]; then
     print_color $RED "❌ Invalid transport mode: $TRANSPORT"
-    print_color $YELLOW "Valid options: stdio, http"
+    print_color $YELLOW "Valid options: stdio, sse, http"
     exit 1
 fi
 
-# Auto-enable service for HTTP transport
-if [[ "$TRANSPORT" == "http" ]]; then
+# Auto-enable service for HTTP and SSE transports
+if [[ "$TRANSPORT" == "http" || "$TRANSPORT" == "sse" ]]; then
     ENABLE_SERVICE=true
 fi
 
@@ -266,7 +266,7 @@ HELM_CMD="$HELM_CMD --set mcp.transport=$TRANSPORT"
 HELM_CMD="$HELM_CMD --set image.tag=$IMAGE_TAG"
 
 if [[ "$ENABLE_SERVICE" == "true" ]]; then
-    HELM_CMD="$HELM_CMD --set service.enabled=true"
+    HELM_CMD="$HELM_CMD --set service.enabled=\"true\""
 fi
 
 if [[ "$FORCE_PULL" == "true" ]]; then
@@ -341,6 +341,13 @@ if eval "$HELM_CMD"; then
         if [[ "$TRANSPORT" == "stdio" ]]; then
             echo "  1. Connect to the server via kubectl exec:"
             echo "     kubectl exec -it -n $NAMESPACE deployment/$RELEASE_NAME -- uv run slack-mcp-server"
+        elif [[ "$TRANSPORT" == "sse" ]]; then
+            echo "  1. Check service status:"
+            echo "     kubectl get service -n $NAMESPACE $RELEASE_NAME"
+            echo "  2. Port forward to access the SSE server:"
+            echo "     kubectl port-forward -n $NAMESPACE service/$RELEASE_NAME 8000:8000"
+            echo "  3. SSE endpoint will be available at: http://localhost:8000/sse"
+            echo "  4. Health check at: http://localhost:8000/health"
         else
             echo "  1. Check service status:"
             echo "     kubectl get service -n $NAMESPACE $RELEASE_NAME"

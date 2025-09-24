@@ -221,7 +221,7 @@ uv run mypy slack_mcp_server/
 | Mode | Use Case | Command |
 |------|----------|---------|
 | **STDIO** 📡 | AI Assistants, Desktop Apps | `uv run slack-mcp-server` |
-| **HTTP** 🌐 | Web Apps, APIs, Remote Access | `uv run slack-mcp-server --port 8000` |
+| **SSE** 🌐 | Web Apps, APIs, Remote Access | `uv run slack-mcp-server --port 8000` |
 
 </div>
 
@@ -238,7 +238,7 @@ uv run slack-mcp-server
 SLACK_BOT_TOKEN=xoxb-xxx SLACK_USER_TOKEN=xoxp-xxx uv run slack-mcp-server
 ```
 
-#### 🌐 HTTP Mode (Web Applications)
+#### 🌐 SSE Mode (Web Applications)
 
 ```bash
 # Global installation
@@ -249,20 +249,49 @@ uv run slack-mcp-server --port 8000
 
 # Custom port
 uv run slack-mcp-server --port 3000
+
+# SSE endpoint will be available at: http://localhost:PORT/sse
 ```
 
 ### 🐳 Docker
+
+#### Quick Start with Pre-built Image
+
+```bash
+# Run with SSE transport (default)
+docker run -p 8000:8000 \
+  -e SLACK_BOT_TOKEN=xoxb-your-token \
+  -e SLACK_USER_TOKEN=xoxp-your-token \
+  bfljerum/slack-server-mcp:latest
+
+# SSE endpoint available at: http://localhost:8000/sse
+```
+
+#### Build Locally
 
 ```bash
 # Build the image
 docker build -t slack-mcp-server .
 
 # Run in STDIO mode
-docker run -e SLACK_BOT_TOKEN=xoxb-xxx -e SLACK_USER_TOKEN=xoxp-xxx slack-mcp-server
+docker run -e SLACK_BOT_TOKEN=xoxb-xxx -e SLACK_USER_TOKEN=xoxp-xxx slack-mcp-server uv run slack-mcp-server
 
-# Run in HTTP mode
-docker run -p 8000:8000 -e SLACK_BOT_TOKEN=xoxb-xxx -e SLACK_USER_TOKEN=xoxp-xxx \
-  slack-mcp-server uv run slack-mcp-server --port 8000
+# Run in SSE mode (default)
+docker run -p 8000:8000 -e SLACK_BOT_TOKEN=xoxb-xxx -e SLACK_USER_TOKEN=xoxp-xxx slack-mcp-server
+```
+
+#### Docker Compose
+
+```bash
+# Create .env file with your tokens
+echo "SLACK_BOT_TOKEN=xoxb-your-token" > .env
+echo "SLACK_USER_TOKEN=xoxp-your-token" >> .env
+
+# Run with docker-compose
+docker-compose up -d
+
+# Check health
+curl http://localhost:8000/health
 ```
 
 ---
@@ -276,7 +305,7 @@ from slack_mcp_server.server import main
 # Run in STDIO mode (for AI assistants)
 main()
 
-# Run in HTTP mode (for web applications)
+# Run in SSE mode (for web applications)
 main(port=8000)
 ```
 
@@ -405,25 +434,36 @@ Add to your Claude Desktop config:
 }
 ```
 
-### 🌐 HTTP Client Integration
+### 🌐 SSE Client Integration
 
 ```python
-import requests
+import aiohttp
+import json
 
-# Call MCP server via HTTP
-response = requests.post(
-    "http://localhost:8000/v1/tools/call",
-    json={
-        "method": "tools/call",
-        "params": {
-            "name": "slack_post_message",
-            "arguments": {
-                "channel": "#general",
-                "text": "Hello from HTTP!"
+# Call MCP server via SSE
+async def call_mcp_tool():
+    async with aiohttp.ClientSession() as session:
+        message = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "slack_post_message",
+                "arguments": {
+                    "channel": "#general",
+                    "text": "Hello from SSE!"
+                }
             }
         }
-    }
-)
+        
+        async with session.post(
+            "http://localhost:8000/sse",
+            json=message,
+            headers={'Accept': 'text/event-stream'}
+        ) as response:
+            async for line in response.content:
+                if line:
+                    print(line.decode())
 ```
 
 ---
@@ -455,12 +495,13 @@ response = requests.post(
 
 ## 📊 Performance
 
-| Feature | STDIO Mode | HTTP Mode |
-|---------|------------|-----------|
+| Feature | STDIO Mode | SSE Mode |
+|---------|------------|----------|
 | **Latency** | ~50ms | ~100ms |
 | **Throughput** | Single client | Multiple clients |
 | **Memory** | Process-based | Always running |
 | **Network** | Local only | Network accessible |
+| **Transport** | Process pipes | Server-Sent Events |
 
 ---
 
@@ -497,14 +538,14 @@ MIT License - see [LICENSE](LICENSE) file for details.
 }
 ```
 
-**For HTTP Transport (Web applications)**:
+**For SSE Transport (Web applications)**:
 
 Start the server:
 ```bash
 SLACK_BOT_TOKEN=<your-bot-token> SLACK_USER_TOKEN=<your-user-token> slack-mcp-server --port 3000
 ```
 
-Connect to: `http://localhost:3000/mcp`
+Connect to: `http://localhost:3000/sse`
 
 ### Examples
 
@@ -513,7 +554,7 @@ Connect to: `http://localhost:3000/mcp`
 See [examples_python/README.md](examples_python/README.md) for detailed Python client examples:
 
 - **STDIO Example**: `examples_python/get_users.py` - Demonstrates STDIO transport
-- **HTTP Example**: `examples_python/get_users_http.py` - Demonstrates HTTP transport
+- **SSE Example**: `examples_python/get_users_sse.py` - Demonstrates SSE transport
 
 Run the examples:
 ```bash
@@ -523,11 +564,11 @@ python examples_python/get_users.py
 # Or with uv from project directory
 uv run python examples_python/get_users.py
 
-# HTTP example  
-python examples_python/get_users_http.py
+# SSE example  
+python examples_python/get_users_sse.py
 
 # Or with uv from project directory
-uv run python examples_python/get_users_http.py
+uv run python examples_python/get_users_sse.py
 ```
 
 #### TypeScript Examples (Legacy)

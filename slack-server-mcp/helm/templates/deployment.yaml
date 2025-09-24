@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "slack-mcp-server.fullname" . }}
+  labels:
+    {{- include "slack-mcp-server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "slack-mcp-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "slack-mcp-server.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "slack-mcp-server.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq .Values.mcp.transport "stdio" }}
+          command: ["/bin/sh", "-c"]
+          args: 
+            - |
+              echo "Slack MCP Server is ready (stdio mode)"
+              echo "This server uses MCP (Model Context Protocol) via stdio"
+              echo "To connect, use: kubectl exec -it <pod-name> -- uv run slack-mcp-server"
+              echo "Slack tokens are configured and ready"
+              echo "Available tools: slack_list_channels, slack_post_message, slack_reply_to_thread, slack_add_reaction,"
+              echo "                 slack_get_channel_history, slack_get_thread_replies, slack_get_users, slack_get_user_profiles,"
+              echo "                 slack_search_messages, slack_search_channels, slack_search_users"
+              echo ""
+              echo "To keep the container running, sleeping indefinitely..."
+              tail -f /dev/null
+          {{- else if or (eq .Values.mcp.transport "http") (eq .Values.mcp.transport "sse") }}
+          command: ["uv", "run", "slack-mcp-server", "--port", "{{ .Values.mcp.server.port }}"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.server.port }}
+              protocol: TCP
+          {{- if and (include "slack-mcp-server.probesEnabled" .) .Values.livenessProbe.enabled }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if and (include "slack-mcp-server.probesEnabled" .) .Values.readinessProbe.enabled }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          env:
+            # Slack configuration
+            {{- if .Values.slack.existingSecret }}
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.slack.existingSecret }}
+                  key: {{ .Values.slack.secretKeys.botToken }}
+            - name: SLACK_USER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.slack.existingSecret }}
+                  key: {{ .Values.slack.secretKeys.userToken }}
+            {{- else }}
+            {{- if .Values.slack.botToken }}
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slack-mcp-server.fullname" . }}-secret
+                  key: bot-token
+            {{- end }}
+            {{- if .Values.slack.userToken }}
+            - name: SLACK_USER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slack-mcp-server.fullname" . }}-secret
+                  key: user-token
+            {{- end }}
+            {{- end }}
+            {{- if .Values.slack.safeSearch }}
+            - name: SLACK_SAFE_SEARCH
+              value: "{{ .Values.slack.safeSearch }}"
+            {{- end }}
+            # Additional environment variables
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

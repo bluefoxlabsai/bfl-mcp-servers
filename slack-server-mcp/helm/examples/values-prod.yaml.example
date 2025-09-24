@@ -1,0 +1,90 @@
+# Production Environment Values
+# This file contains values for production environment
+
+# Use STDIO transport for MCP compatibility (default for AI assistants)
+mcp:
+  transport: "stdio"
+
+# Multiple replicas for high availability
+replicaCount: 3
+
+# Production image settings
+image:
+  repository: bfljerum/slack-server-mcp
+  pullPolicy: Always
+  tag: "0.1.4"  # Use specific version, not latest
+
+# Production security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Production resource limits
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Enable autoscaling for production load
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Slack configuration with existing secret (recommended for production)
+slack:
+  # Use existing secret for production
+  existingSecret: "slack-credentials"
+  secretKeys:
+    botToken: "bot-token"
+    userToken: "user-token"
+  safeSearch: true  # Enable safe search for production
+
+# Node selector for production workloads
+nodeSelector:
+  node-type: "production"
+
+# Tolerations for dedicated nodes
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "mcp-servers"
+    effect: "NoSchedule"
+
+# Anti-affinity for better distribution
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - slack-mcp-server
+        topologyKey: kubernetes.io/hostname
+
+# Production monitoring and observability
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"

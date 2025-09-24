@@ -27,13 +27,14 @@ RUN uv sync --frozen
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose port for HTTP/SSE transport
+# Expose port for SSE transport
 EXPOSE 8000
 
-# Default command (SSE/HTTP mode) - using uv run with port
+# Default command (SSE mode) - using uv run with port
 CMD ["uv", "run", "slack-mcp-server", "--port", "8000"]
 
 # Usage examples:
-# SSE/HTTP mode (default): docker run -p 8000:8000 slack-server-mcp
+# SSE mode (default): docker run -p 8000:8000 slack-server-mcp
 # STDIO mode: docker run slack-server-mcp uv run slack-mcp-server
 # With environment: docker run -e SLACK_BOT_TOKEN=xoxb-... -e SLACK_USER_TOKEN=xoxp-... -p 8000:8000 slack-server-mcp
+# SSE endpoint available at: http://localhost:8000/sse

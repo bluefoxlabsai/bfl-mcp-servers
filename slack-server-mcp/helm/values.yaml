@@ -13,7 +13,7 @@ replicaCount: 1
 # MCP Server Configuration
 mcp:
   # Transport protocol: stdio, sse
-  transport: "sse"  # Use SSE for better Kubernetes cluster compatibility
+  transport: "sse" # Use SSE for better Kubernetes cluster compatibility
   # Server configuration for SSE transport
   server:
     host: "0.0.0.0"
@@ -25,7 +25,7 @@ image:
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"  # Updated with /sse endpoint support
+  tag: "latest" # Updated with /sse endpoint support
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
@@ -62,15 +62,15 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-    - ALL
-  readOnlyRootFilesystem: false  # App needs to write logs
+      - ALL
+  readOnlyRootFilesystem: false # App needs to write logs
   runAsNonRoot: true
   runAsUser: 1000
 
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
-  # Service is automatically enabled for HTTP transport, disabled for stdio
-  enabled: "true"  # Set to true (quotes) or "auto" (with quotes). Do not mix types.
+  # Service is automatically enabled for HTTP/SSE transport, disabled for stdio
+  enabled: "auto" # Set to true (quotes) or "auto" (with quotes). Do not mix types.
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
@@ -80,7 +80,8 @@ service:
 ingress:
   enabled: false
   className: ""
-  annotations: {}
+  annotations:
+    {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
@@ -175,11 +176,11 @@ readinessProbe:
 slack:
   # These will be set as environment variables
   # For security, these should be provided via --set flags or values files
-  # 
+  #
   # HOW TO GENERATE TOKENS:
   # 1. Create Slack app: https://api.slack.com/apps > "Create New App"
   # 2. Bot Token Scopes: channels:read, channels:history, chat:write, reactions:write, users:read, files:read
-  # 3. User Token Scopes: search:read, channels:read, users:read  
+  # 3. User Token Scopes: search:read, channels:read, users:read
   # 4. Install to workspace and copy tokens
   #
   # DEPLOYMENT EXAMPLES:
@@ -187,17 +188,17 @@ slack:
   #   helm install slack-mcp . --set slack.botToken=xoxb-... --set slack.userToken=xoxp-...
   # Via values file override:
   #   helm install slack-mcp . -f production-values.yaml
-  botToken: ""  # SLACK_BOT_TOKEN (starts with xoxb-)
-  userToken: ""  # SLACK_USER_TOKEN (starts with xoxp-)
-  safeSearch: true  # SLACK_SAFE_SEARCH (exclude private channels from search)
-  
+  botToken: "" # SLACK_BOT_TOKEN (starts with xoxb-)
+  userToken: "" # SLACK_USER_TOKEN (starts with xoxp-)
+  safeSearch: true # SLACK_SAFE_SEARCH (exclude private channels from search)
+
   # Secret configuration - if you prefer to manage secrets externally
   # Create secret: kubectl create secret generic slack-tokens --from-literal=bot-token=xoxb-... --from-literal=user-token=xoxp-...
   # Then set: existingSecret: "slack-tokens"
   existingSecret: "slack-server-mcp-secret"
   secretKeys:
-    botToken: "bot-token"      # Key name in the secret for bot token
-    userToken: "user-token"    # Key name in the secret for user token
+    botToken: "bot-token" # Key name in the secret for bot token
+    userToken: "user-token" # Key name in the secret for user token
 
 # Environment variables
 env: []

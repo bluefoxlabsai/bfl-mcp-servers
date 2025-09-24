@@ -4,7 +4,7 @@ This Helm chart deploys the Slack MCP (Model Context Protocol) server on a Kuber
 
 ## 🚀 Features
 
-- **Multiple Transport Protocols**: Supports both stdio and HTTP transports
+- **Multiple Transport Protocols**: Supports stdio, SSE, and HTTP transports
 - **Interactive Installation Script**: Easy setup with prompts for namespace and Slack tokens
 - **Namespace Support**: Deploy to any Kubernetes namespace
 - **Dry-run Mode**: Template validation without actual installation  
@@ -16,8 +16,9 @@ This Helm chart deploys the Slack MCP (Model Context Protocol) server on a Kuber
 
 ## 📋 Important Note
 
-The Slack MCP server supports two transport protocols:
-- **stdio**: Traditional MCP communication via kubectl exec (default for AI assistants)  
+The Slack MCP server supports three transport protocols:
+- **stdio**: Traditional MCP communication via kubectl exec (for AI assistants)  
+- **sse**: Server-Sent Events transport for real-time web applications (recommended for Kubernetes)
 - **http**: HTTP-based transport for web applications and remote access
 
 This chart automatically configures the appropriate Kubernetes resources based on the selected transport.
@@ -52,6 +53,9 @@ NAMESPACE=slack SLACK_BOT_TOKEN=xoxb-xxx SLACK_USER_TOKEN=xoxp-xxx ./install.sh 
 ### Advanced Installation Options
 
 ```bash
+# Install with SSE transport (recommended for Kubernetes)
+./install.sh --transport=sse
+
 # Install with HTTP transport
 ./install.sh --transport=http
 
@@ -98,8 +102,24 @@ service:
   enabled: auto  # Will be false for stdio
 ```
 
+#### SSE Mode (Recommended for Kubernetes)
+Best for real-time web applications with Server-Sent Events:
+```yaml
+mcp:
+  transport: "sse"
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
+# Service is automatically enabled for SSE
+service:
+  enabled: auto  # Will be true for sse
+  type: ClusterIP
+  port: 8000
+```
+
 #### HTTP Mode  
-Best for web applications and remote access:
+Best for traditional web applications and remote access:
 ```yaml
 mcp:
   transport: "http"
@@ -170,7 +190,7 @@ The `examples/` directory contains pre-configured values files:
 ```
 
 Features:
-- HTTP transport for easier testing
+- SSE transport for better Kubernetes compatibility
 - Ingress enabled
 - Lower resource limits
 - Safe search enabled
@@ -200,6 +220,21 @@ export POD_NAME=$(kubectl get pods -n mcp-servers -l "app.kubernetes.io/name=sla
 
 # Connect via kubectl exec
 kubectl exec -it -n mcp-servers $POD_NAME -- uv run slack-mcp-server
+```
+
+### SSE Mode (Web Applications)
+
+Access the SSE endpoint:
+
+```bash
+# Port forward to access locally
+kubectl port-forward -n mcp-servers service/slack-mcp-server 8000:8000
+
+# Test the health endpoint
+curl http://localhost:8000/health
+
+# SSE endpoint available at
+curl http://localhost:8000/sse
 ```
 
 ### HTTP Mode (Web Applications)
@@ -322,7 +357,7 @@ helm install slack-mcp-server . \
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `mcp.transport` | Transport protocol (stdio/http) | `stdio` |
+| `mcp.transport` | Transport protocol (stdio/sse/http) | `sse` |
 | `mcp.server.host` | HTTP server bind host | `0.0.0.0` |
 | `mcp.server.port` | HTTP server port | `8000` |
 | `image.repository` | Container image repository | `bfljerum/slack-mcp-server` |

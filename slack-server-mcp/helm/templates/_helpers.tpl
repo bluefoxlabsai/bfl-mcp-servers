@@ -65,22 +65,23 @@ Create the name of the service account to use
 Return true if service should be enabled
 */}}
 {{- define "slack-mcp-server.serviceEnabled" -}}
-{{- if eq .Values.service.enabled "auto" }}
-{{- if eq .Values.mcp.transport "http" }}
+{{- $serviceEnabled := .Values.service.enabled | toString -}}
+{{- if eq $serviceEnabled "auto" }}
+{{- if or (eq .Values.mcp.transport "http") (eq .Values.mcp.transport "sse") }}
 {{- print "true" }}
 {{- else }}
 {{- print "false" }}
 {{- end }}
 {{- else }}
-{{- print .Values.service.enabled }}
+{{- print $serviceEnabled }}
 {{- end }}
 {{- end }}
 
 {{/*
-Return true if probes should be enabled (only for HTTP transport)
+Return true if probes should be enabled (for HTTP and SSE transports)
 */}}
 {{- define "slack-mcp-server.probesEnabled" -}}
-{{- if eq .Values.mcp.transport "http" }}
+{{- if or (eq .Values.mcp.transport "http") (eq .Values.mcp.transport "sse") }}
 {{- print "true" }}
 {{- else }}
 {{- print "false" }}

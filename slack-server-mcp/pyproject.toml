@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "slack-mcp-server"
-version = "0.1.4"
+version = "0.1.5"
 description = "A Slack MCP server built with FastMCP"
 authors = [
     {name = "Blue Fox Labs AI", email = "info@bluefoxlabs.ai"},

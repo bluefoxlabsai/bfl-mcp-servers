@@ -38,21 +38,21 @@ This example:
 - Calls the `slack_get_users` tool
 - Displays the first 5 users from your Slack workspace
 
-### 2. `get_users_http.py` - HTTP Transport
+### 2. `get_users_sse.py` - SSE Transport
 
-Demonstrates how to call the MCP server using HTTP transport.
+Demonstrates how to call the MCP server using Server-Sent Events (SSE) transport.
 
 ```bash
 # From examples_python directory
-python get_users_http.py
+python get_users_sse.py
 
 # Or with uv from project root
-uv run python examples_python/get_users_http.py
+uv run python examples_python/get_users_sse.py
 ```
 
 This example:
-- Starts the MCP server in HTTP mode on port 3000
-- Makes HTTP requests to call the `slack_get_users` tool
+- Starts the MCP server in SSE mode on port 3000
+- Makes SSE requests to call the `slack_get_users` tool via `/sse` endpoint
 - Displays the first 3 users from your Slack workspace
 - Automatically stops the server when done
 
@@ -68,7 +68,7 @@ Both examples will show:
 
 1. **Token Issues**: Make sure your bot token starts with `xoxb-` and user token starts with `xoxp-`
 2. **Permission Issues**: Ensure your bot has the necessary scopes in your Slack app configuration
-3. **Network Issues**: For HTTP example, make sure port 3000 is available
+3. **Network Issues**: For SSE example, make sure port 3000 is available
 
 ## Next Steps
 

@@ -1,10 +1,10 @@
 """Slack MCP Server - FastMCP implementation."""
 
+import asyncio
 import json
 import os
 import sys
 from typing import Any, Dict, List, Optional
-import asyncio
 import click
 import uvicorn
 from dotenv import load_dotenv
@@ -93,8 +93,9 @@ async def health_check(request):
         return JSONResponse({
             "status": "healthy",
             "service": "Slack MCP Server",
-            "version": "0.1.4",
-            "transport": "http",
+            "version": "0.1.5",
+            "transport": "sse",
+            "sse_endpoint": "/sse",
             "tools_available": 11,
             "has_valid_tokens": True
         })
@@ -424,7 +425,7 @@ async def slack_search_users(request: SearchUsersRequest) -> str:
 
 
 @click.command()
-@click.option("--port", type=int, help="Start the server with HTTP transport on the specified port")
+@click.option("--port", type=int, help="Start the server with SSE transport on the specified port")
 @click.option("--help", is_flag=True, help="Show this help message")
 def main(port: Optional[int] = None, help: bool = False) -> None:
     """Slack MCP Server - FastMCP implementation."""
@@ -434,36 +435,38 @@ def main(port: Optional[int] = None, help: bool = False) -> None:
 Usage: slack-mcp-server [options]
 
 Options:
-  --port <number>    Start the server with HTTP transport on the specified port
+  --port <number>    Start the server with SSE transport on the specified port
   --help             Show this help message
 
 Examples:
   slack-mcp-server                  # Start with stdio transport (default)
-  slack-mcp-server --port 8000      # Start with HTTP transport on port 8000
+  slack-mcp-server --port 8000      # Start with SSE transport on port 8000
         """)
         return
     
     if port:
-        # HTTP server mode
-        print(f"Starting Slack MCP Server on HTTP port {port}")
+        # SSE server mode
+        print(f"Starting Slack MCP Server with SSE transport on port {port}")
+        print(f"SSE endpoint available at: http://0.0.0.0:{port}/sse")
         
-        # Add health endpoint and custom SSE endpoint to the HTTP app
-        app = mcp.http_app()
-        app.routes.append(Route("/health", health_check))
+        # Use FastMCP's built-in SSE async runner
+        async def run_server():
+            # Add health endpoint to the SSE app
+            app = mcp.sse_app()
+            app.routes.append(Route("/health", health_check))
+            
+            # Run the SSE server
+            config = uvicorn.Config(
+                app,
+                host="0.0.0.0",
+                port=port,
+                log_level="info"
+            )
+            server = uvicorn.Server(config)
+            await server.serve()
         
-        # Add custom SSE endpoint at /sse that redirects to /mcp
-        async def sse_redirect(request):
-            """Redirect /sse to /mcp for SSE compatibility."""
-            return RedirectResponse(url="/mcp", status_code=307)
-        
-        app.routes.append(Route("/sse", sse_redirect, methods=["GET", "POST", "DELETE"]))
-        
-        uvicorn.run(
-            app,
-            host="0.0.0.0",
-            port=port,
-            log_level="info"
-        )
+        # Run the async server
+        asyncio.run(run_server())
     else:
         # STDIO mode (default)
         print("Starting Slack MCP Server in STDIO mode", file=sys.stderr)

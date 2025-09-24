@@ -5,7 +5,7 @@
 # Namespace configuration
 # Note: The actual namespace is set via helm install --namespace flag
 # This is for documentation purposes
-namespace: default
+namespace: mcp-servers
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
@@ -70,7 +70,7 @@ securityContext:
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
   # Service is automatically enabled for HTTP transport, disabled for stdio
-  enabled: auto  # auto, true, false
+  enabled: "true"  # Set to true (quotes) or "auto" (with quotes). Do not mix types.
   # This sets the service type more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
@@ -189,12 +189,12 @@ slack:
   #   helm install slack-mcp . -f production-values.yaml
   botToken: ""  # SLACK_BOT_TOKEN (starts with xoxb-)
   userToken: ""  # SLACK_USER_TOKEN (starts with xoxp-)
-  safeSearch: false  # SLACK_SAFE_SEARCH (exclude private channels from search)
+  safeSearch: true  # SLACK_SAFE_SEARCH (exclude private channels from search)
   
   # Secret configuration - if you prefer to manage secrets externally
   # Create secret: kubectl create secret generic slack-tokens --from-literal=bot-token=xoxb-... --from-literal=user-token=xoxp-...
   # Then set: existingSecret: "slack-tokens"
-  existingSecret: ""
+  existingSecret: "slack-server-mcp-secret"
   secretKeys:
     botToken: "bot-token"      # Key name in the secret for bot token
     userToken: "user-token"    # Key name in the secret for user token

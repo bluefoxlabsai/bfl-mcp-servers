@@ -1,0 +1,31 @@
+{{- if .Values.httpRoute.enabled }}
+{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/HTTPRoute" }}
+apiVersion: gateway.networking.k8s.io/v1
+{{- else if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1beta1/HTTPRoute" }}
+apiVersion: gateway.networking.k8s.io/v1beta1
+{{- else if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1alpha2/HTTPRoute" }}
+apiVersion: gateway.networking.k8s.io/v1alpha2
+{{- end }}
+kind: HTTPRoute
+metadata:
+  name: {{ include "slack-mcp-server.fullname" . }}
+  labels:
+    {{- include "slack-mcp-server.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.httpRoute.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.httpRoute.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: {{ include "slack-mcp-server.fullname" . }}
+      port: {{ .Values.service.port }}
+{{- end }}

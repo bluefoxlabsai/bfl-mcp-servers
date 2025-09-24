@@ -1,0 +1,50 @@
+# Development Environment Values
+# This file contains values for development environment
+
+# Use HTTP transport for easier testing
+mcp:
+  transport: "http"
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
+# Enable service for HTTP transport
+service:
+  enabled: true
+  type: ClusterIP
+  port: 8000
+
+# Enable ingress for development access
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: slack-mcp-dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Resource limits for development
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+# Slack configuration (set via environment or --set flags)
+slack:
+  botToken: ""  # Set via --set slack.botToken=xoxb-xxx
+  userToken: "" # Set via --set slack.userToken=xoxp-xxx
+  safeSearch: true
+
+# Enable autoscaling for load testing
+autoscaling:
+  enabled: false  # Keep disabled in dev
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80

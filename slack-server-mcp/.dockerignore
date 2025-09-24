@@ -1,0 +1,60 @@
+# =======================
+# Docker Ignore for Python
+# =======================
+
+# Version control
+.git
+.gitignore
+
+# Documentation
+README.md
+CLAUDE.md
+LICENSE
+docs/
+*.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+Jenkinsfile
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing
+coverage/
+.pytest_cache/
+test/
+tests/
+**/*.test.py
+**/*.spec.py
+
+# Environment variables
+.env*
+!.env.sample
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Cache directories
+.cache/
+.temp/
+.tmp/
+
+# Examples (unless needed in container)
+examples_python/

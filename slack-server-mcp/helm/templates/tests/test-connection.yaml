@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "slack-mcp-server.fullname" . }}-test-connection"
+  labels:
+    {{- include "slack-mcp-server.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  restartPolicy: Never
+  containers:
+    - name: wget
+      image: busybox
+      {{- if eq (include "slack-mcp-server.serviceEnabled" .) "true" }}
+      command: ['wget']
+      args: ['{{ include "slack-mcp-server.fullname" . }}:{{ .Values.service.port }}/health']
+      {{- else }}
+      command: ['/bin/sh']
+      args: ['-c', 'echo "Service not enabled for STDIO transport - test passed"']
+      {{- end }}

@@ -140,7 +140,7 @@ done
 
 # Set default release name if not provided
 if [[ -z "$RELEASE_NAME" ]]; then
-    RELEASE_NAME="slack-mcp-server"
+    RELEASE_NAME="slack-server-mcp"
 fi
 
 # Validate transport mode

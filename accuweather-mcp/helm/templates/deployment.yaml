@@ -1,0 +1,135 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "accuweather-mcp.fullname" . }}
+  labels:
+    {{- include "accuweather-mcp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "accuweather-mcp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "accuweather-mcp.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "accuweather-mcp.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq .Values.mcp.transport "stdio" }}
+          command: ["/bin/sh", "-c"]
+          args: 
+            - |
+              echo "AccuWeather MCP Server is ready (stdio mode)"
+              echo "This server uses MCP (Model Context Protocol) via stdio"
+              echo "AccuWeather API key is configured and ready"
+              echo "Available tools: search_locations, get_current_weather, get_daily_forecast,"
+              echo "                 get_hourly_forecast, get_weather_alerts, get_location_by_coordinates,"
+              echo "                 get_historical_weather"
+              echo ""
+              echo "To keep the container running, sleeping indefinitely..."
+              tail -f /dev/null
+          {{- else if or (eq .Values.mcp.transport "http") (eq .Values.mcp.transport "sse") }}
+          command: ["uv", "run", "mcp-accuweather", "--port", "{{ .Values.mcp.server.port }}"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcp.server.port }}
+              protocol: TCP
+          {{- if and (include "accuweather-mcp.probesEnabled" .) .Values.livenessProbe.enabled }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if and (include "accuweather-mcp.probesEnabled" .) .Values.readinessProbe.enabled }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- end }}
+          env:
+            # AccuWeather configuration
+            {{- if .Values.accuweather.existingSecret }}
+            - name: ACCUWEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.accuweather.existingSecret }}
+                  key: {{ .Values.accuweather.secretKeys.apiKey }}
+            {{- else }}
+            {{- if .Values.accuweather.apiKey }}
+            - name: ACCUWEATHER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "accuweather-mcp.fullname" . }}-secret
+                  key: api-key
+            {{- end }}
+            {{- end }}
+            {{- if .Values.accuweather.baseUrl }}
+            - name: ACCUWEATHER_BASE_URL
+              value: "{{ .Values.accuweather.baseUrl }}"
+            {{- end }}
+            {{- if .Values.accuweather.cache.ttl }}
+            - name: CACHE_TTL
+              value: "{{ .Values.accuweather.cache.ttl }}"
+            {{- end }}
+            {{- if .Values.accuweather.cache.maxSize }}
+            - name: CACHE_MAXSIZE
+              value: "{{ .Values.accuweather.cache.maxSize }}"
+            {{- end }}
+            {{- if .Values.accuweather.timeout }}
+            - name: REQUEST_TIMEOUT
+              value: "{{ .Values.accuweather.timeout }}"
+            {{- end }}
+            # Additional environment variables
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.envFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

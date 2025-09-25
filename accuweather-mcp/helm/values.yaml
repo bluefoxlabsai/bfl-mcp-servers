@@ -1,0 +1,160 @@
+# Default values for accuweather-mcp.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Namespace configuration
+namespace: mcp-servers
+
+# This will set the replicaset count
+replicaCount: 1
+
+# MCP Server Configuration
+mcp:
+  # Transport protocol: stdio, sse
+  transport: "sse" # Use SSE for better Kubernetes cluster compatibility
+  # Server configuration for SSE transport
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
+# Container image configuration
+image:
+  repository: bfljerum/accuweather-mcp
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Image pull secrets for private repositories
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Service account configuration
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+# Pod annotations and labels
+podAnnotations: {}
+podLabels: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false # App needs to write logs
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Service configuration
+service:
+  enabled: "auto" # Automatically enabled for SSE transport
+  type: ClusterIP
+  port: 8000
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: accuweather-mcp.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+# HTTPRoute configuration for Gateway API
+httpRoute:
+  enabled: false
+  parentRefs: []
+  hostnames: []
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+# Additional volumes and volume mounts
+volumes: []
+volumeMounts: []
+
+# Node selector, tolerations, and affinity
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Health probes (enabled for SSE transport)
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+# AccuWeather Configuration
+accuweather:
+  # API Key - REQUIRED
+  # Get your API key from: https://developer.accuweather.com/
+  apiKey: "" # Set via --set accuweather.apiKey=your-key or values file
+  
+  # Base URL for AccuWeather API
+  baseUrl: "http://dataservice.accuweather.com"
+  
+  # Cache configuration
+  cache:
+    ttl: 300 # 5 minutes
+    maxSize: 1000
+  
+  # Request timeout in seconds
+  timeout: 30
+  
+  # Secret configuration - if you prefer to manage secrets externally
+  # Create secret: kubectl create secret generic accuweather-secret --from-literal=api-key=your-key
+  existingSecret: "accuweather-mcp-secret"
+  secretKeys:
+    apiKey: "api-key"
+
+# Environment variables
+env: []
+
+# Environment variables from ConfigMaps or Secrets
+envFrom: []

@@ -1,0 +1,29 @@
+{{- $serviceEnabled := false }}
+{{- if kindIs "string" .Values.service.enabled }}
+  {{- if eq .Values.service.enabled "auto" }}
+    {{- if eq .Values.mcp.transport "sse" }}
+      {{- $serviceEnabled = true }}
+    {{- end }}
+  {{- else if eq .Values.service.enabled "true" }}
+    {{- $serviceEnabled = true }}
+  {{- end }}
+{{- else if .Values.service.enabled }}
+  {{- $serviceEnabled = true }}
+{{- end }}
+{{- if $serviceEnabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "sharepoint-mcp.fullname" . }}
+  labels:
+    {{- include "sharepoint-mcp.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "sharepoint-mcp.selectorLabels" . | nindent 4 }}
+{{- end }}

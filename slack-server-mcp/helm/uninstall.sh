@@ -7,7 +7,7 @@ set -e
 
 # Configuration
 NAMESPACE="${NAMESPACE:-mcp-servers}"
-RELEASE_NAME="${RELEASE_NAME:-slack-mcp}"
+RELEASE_NAME="${RELEASE_NAME:-slack-server-mcp}"
 
 # Colors for output
 RED='\033[0;31m'

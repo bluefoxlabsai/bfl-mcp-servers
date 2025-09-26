@@ -1,10 +1,22 @@
-{{- if eq (include "slack-mcp-server.serviceEnabled" .) "true" }}
+{{- $serviceEnabled := false }}
+{{- if kindIs "string" .Values.service.enabled }}
+  {{- if eq .Values.service.enabled "auto" }}
+    {{- if ne .Values.mcp.transport "stdio" }}
+      {{- $serviceEnabled = true }}
+    {{- end }}
+  {{- else if eq .Values.service.enabled "true" }}
+    {{- $serviceEnabled = true }}
+  {{- end }}
+{{- else if .Values.service.enabled }}
+  {{- $serviceEnabled = true }}
+{{- end }}
+{{- if $serviceEnabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "slack-mcp-server.fullname" . }}
+  name: {{ include "slack-server-mcp.fullname" . }}
   labels:
-    {{- include "slack-mcp-server.labels" . | nindent 4 }}
+    {{- include "slack-server-mcp.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -13,5 +25,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "slack-mcp-server.selectorLabels" . | nindent 4 }}
+    {{- include "slack-server-mcp.selectorLabels" . | nindent 4 }}
 {{- end }}

@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # Namespace configuration
-namespace: mcp-servers
+namespace: accuweather-mcp
 
 # This will set the replicaset count
 replicaCount: 1

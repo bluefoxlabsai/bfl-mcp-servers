@@ -1,31 +1,24 @@
-{{- if .Values.httpRoute.enabled }}
-{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/HTTPRoute" }}
+{{- if .Values.httproute.enabled -}}
 apiVersion: gateway.networking.k8s.io/v1
-{{- else if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1beta1/HTTPRoute" }}
-apiVersion: gateway.networking.k8s.io/v1beta1
-{{- else if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1alpha2/HTTPRoute" }}
-apiVersion: gateway.networking.k8s.io/v1alpha2
-{{- end }}
 kind: HTTPRoute
 metadata:
-  name: {{ include "slack-mcp-server.fullname" . }}
+  name: {{ include "slack-server-mcp.fullname" . }}
   labels:
-    {{- include "slack-mcp-server.labels" . | nindent 4 }}
+    {{- include "slack-server-mcp.labels" . | nindent 4 }}
 spec:
-  {{- with .Values.httpRoute.parentRefs }}
   parentRefs:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with .Values.httpRoute.hostnames }}
+    - name: {{ .Values.httproute.gatewayName }}
+      namespace: {{ .Values.httproute.gatewayNamespace | default .Release.Namespace }}
   hostnames:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- range .Values.httproute.hostnames }}
+    - {{ . | quote }}
+    {{- end }}
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    backendRefs:
-    - name: {{ include "slack-mcp-server.fullname" . }}
-      port: {{ .Values.service.port }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: {{ .Values.httproute.path | default "/" }}
+      backendRefs:
+        - name: {{ include "slack-server-mcp.fullname" . }}
+          port: {{ .Values.mcp.server.port }}
 {{- end }}

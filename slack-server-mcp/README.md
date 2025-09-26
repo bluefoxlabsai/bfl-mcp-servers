@@ -25,20 +25,227 @@ Transform your AI workflow with comprehensive Slack integration:
 - 😀 **`slack_add_reaction`** - Add emoji reactions
 - 📋 **`slack_list_channels`** - Browse workspace channels with pagination
 
-### 📊 **Data Retrieval** 
+### 📊 **Data Retrieval**
 - 🔍 **`slack_get_channel_history`** - Fetch recent messages from channels
 - 🧵 **`slack_get_thread_replies`** - Get complete thread conversations
 - 👥 **`slack_get_users`** - Retrieve user profiles and information
-- 📱 **`slack_get_user_profiles`** - Bulk user data operations
+- 🔎 **`slack_search_users`** - Search users across all profile fields
 
 ### 🔎 **Advanced Search**
-- 🔍 **`slack_search_messages`** - Powerful message search with filters:
-  - 📍 Location: `in:channel-name`
-  - 👤 User: `from:@username` 
-  - 📅 Date: `before:2024-01-01`, `after:2023-12-01`
-  - 🎯 Content: `has:link`, `has:attachment`, `is:starred`
+- 🔍 **`slack_search_messages`** - Powerful message search with filters (requires user token)
 - 📢 **`slack_search_channels`** - Find channels by name
-- 👤 **`slack_search_users`** - Search users across all profile fields
+
+---
+
+## 🏠 Running Locally
+
+### Prerequisites
+
+Before running the Slack MCP Server locally, ensure you have:
+
+- **Python 3.10+** installed
+- **UV package manager** installed (`pip install uv`)
+- **Slack App** with proper tokens (see [Token Setup](#-how-to-generate-slack-tokens))
+
+### Step-by-Step Local Setup
+
+#### 1. Clone and Navigate
+
+```bash
+# Clone the repository
+git clone https://github.com/bluefoxlabsai/bfl-mcp-servers.git
+cd bfl-mcp-servers/slack-server-mcp
+```
+
+#### 2. Install Dependencies
+
+```bash
+# Install Python dependencies using UV
+uv sync
+```
+
+#### 3. Configure Environment
+
+```bash
+# Copy the environment template
+cp .env.example .env
+
+# Edit .env file with your Slack tokens
+# Use your favorite editor (nano, vim, code, etc.)
+nano .env
+```
+
+Add your tokens to `.env`:
+
+```env
+SLACK_BOT_TOKEN=xoxb-your-actual-bot-token-here
+SLACK_USER_TOKEN=xoxp-your-actual-user-token-here
+SLACK_SAFE_SEARCH=false
+```
+
+#### 4. Run the Server
+
+```bash
+# Start the MCP server (recommended)
+uv run python slack_mcp_server.py --host 0.0.0.0 --port 8000
+
+# Alternative methods
+python slack_mcp_server.py --host 0.0.0.0 --port 8000
+uv run slack-mcp-server --host 0.0.0.0 --port 8000
+```
+
+You should see output like:
+```
+INFO:     Started server process [xxxxx]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+#### 5. Verify Server is Running
+
+```bash
+# Test the health endpoint
+curl http://localhost:8000/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "server": "SlackMCP",
+  "version": "0.1.0"
+}
+```
+
+#### 6. Test MCP Tools
+
+```bash
+# Test available tools endpoint
+curl http://localhost:8000/
+```
+
+This will show all available MCP tools and server information.
+
+### Alternative: Docker Local Development
+
+If you prefer Docker for local development:
+
+```bash
+# Build the image
+docker build -t slack-mcp-local .
+
+# Run with your tokens
+docker run -p 8000:8000 \
+  -e SLACK_BOT_TOKEN=xoxb-your-bot-token \
+  -e SLACK_USER_TOKEN=xoxp-your-user-token \
+  slack-mcp-local
+```
+
+### Connecting to MCP Clients
+
+Once your server is running locally, configure your MCP client:
+
+#### For Claude Desktop (or other MCP clients):
+
+```json
+{
+  "mcpServers": {
+    "slack": {
+      "command": "uv",
+      "args": ["run", "slack_mcp_server.py"],
+      "cwd": "/path/to/bfl-mcp-servers/slack-server-mcp",
+      "env": {
+        "SLACK_BOT_TOKEN": "xoxb-your-token",
+        "SLACK_USER_TOKEN": "xoxp-your-token"
+      }
+    }
+  }
+}
+```
+
+#### For HTTP-based MCP clients:
+
+Connect to: `http://localhost:8000`
+
+### Local Development Tips
+
+#### Debug Mode
+
+Enable detailed logging:
+
+```bash
+# Set debug environment variable
+export SLACK_SDK_DEBUG=true
+
+# Run with debug output
+uv run python slack_mcp_server.py --host 0.0.0.0 --port 8000
+```
+
+#### Testing Tools Manually
+
+You can test individual tools using curl:
+
+```bash
+# List available channels
+curl -X POST http://localhost:8000/tools/slack_list_channels \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+#### Environment Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SLACK_BOT_TOKEN` | Yes | Bot user OAuth token (xoxb-) |
+| `SLACK_USER_TOKEN` | Yes | User OAuth token (xoxp-) |
+| `SLACK_SAFE_SEARCH` | No | Filter sensitive content (true/false) |
+| `SLACK_SDK_DEBUG` | No | Enable debug logging (true/false) |
+
+### Troubleshooting Local Setup
+
+#### Server Won't Start
+
+**Issue**: `ModuleNotFoundError` or dependency errors
+**Solution**: Ensure UV installed dependencies:
+```bash
+uv sync
+```
+
+#### Token Authentication Errors
+
+**Issue**: `invalid_auth` when testing tools
+**Solution**: 
+- Verify tokens start with correct prefixes (`xoxb-` for bot, `xoxp-` for user)
+- Check token scopes in Slack app settings
+- Ensure app is installed to workspace
+
+#### Port Already in Use
+
+**Issue**: `Port 8000 already in use`
+**Solution**: Use a different port by modifying the server code or use a different port:
+```bash
+# The server currently runs on port 8000 by default
+# To change port, modify the main() function in slack_mcp_server.py
+```
+
+#### Wrong Server Startup Command
+
+**Issue**: `ERROR: Error loading ASGI app. Attribute "app" not found in module "slack_mcp_server"`
+**Solution**: Don't use `uvicorn` directly. Use the correct command:
+```bash
+# Recommended
+uv run python slack_mcp_server.py --host 0.0.0.0 --port 8000
+
+# Alternatives
+python slack_mcp_server.py --host 0.0.0.0 --port 8000
+uv run slack-mcp-server --host 0.0.0.0 --port 8000
+```
+
+#### Permission Errors
+
+**Issue**: `missing_scope` errors
+**Solution**: Add required OAuth scopes to your Slack app (see [Token Setup](#-how-to-generate-slack-tokens))
 
 ---
 
@@ -50,43 +257,45 @@ Transform your AI workflow with comprehensive Slack integration:
 <summary><strong>🌟 Option 1: UV (Recommended)</strong></summary>
 
 ```bash
-# Install globally
-uv add slack-mcp-server
-
-# Or add to existing project
-uv add slack-mcp-server --dev
-```
-</details>
-
-<details>
-<summary><strong>🐍 Option 2: Pip</strong></summary>
-
-```bash
-pip install slack-mcp-server
-```
-</details>
-
-<details>
-<summary><strong>📥 Option 3: From Source (Development)</strong></summary>
-
-```bash
 # Clone the repository
 git clone https://github.com/bluefoxlabsai/bfl-mcp-servers.git
 cd bfl-mcp-servers/slack-server-mcp
 
-# With uv (recommended)
+# Install dependencies
 uv sync
 
-# Or with pip
-pip install -e .
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your Slack tokens
+# SLACK_BOT_TOKEN=xoxb-your-actual-bot-token
+# SLACK_USER_TOKEN=xoxp-your-actual-user-token
+
+# Run the server
+uv run python slack_mcp_server.py --host 0.0.0.0 --port 8000
 ```
+
+</details>
+
+<details>
+<summary><strong>🐳 Option 2: Docker</strong></summary>
+
+```bash
+# Build the image
+docker build -t slack-mcp-server .
+
+# Run with your tokens
+docker run -p 8000:8000 \
+  -e SLACK_BOT_TOKEN=xoxb-your-token \
+  -e SLACK_USER_TOKEN=xoxp-your-token \
+  slack-mcp-server
+```
+
 </details>
 
 ---
 
-## 🔧 Configuration
-
-### 🔑 Required Environment Variables
+## 🔑 Required Environment Variables
 
 Create a `.env` file in your project root:
 
@@ -101,41 +310,34 @@ SLACK_USER_TOKEN=xoxp-your-user-token-here
 SLACK_SAFE_SEARCH=false
 ```
 
-### 📋 Token Requirements
-
-| Token | Purpose | Starts with | Required |
-|-------|---------|-------------|----------|
-| **Bot Token** | Core operations (post, react, etc.) | `xoxb-` | ✅ Yes |
-| **User Token** | Search functionality | `xoxp-` | ✅ Yes |
-
 ### 🔑 How to Generate Slack Tokens
 
-#### Step 1: Create Slack App
-1. Go to [https://api.slack.com/apps](https://api.slack.com/apps)
+#### Step 1: Create a Slack App
+1. Go to [Slack API](https://api.slack.com/apps)
 2. Click **"Create New App"** → **"From scratch"**
-3. Enter app name (e.g., "MCP Server") and select your workspace
-4. Click **"Create App"**
+3. Enter your app name and select workspace
 
 #### Step 2: Configure Bot Token Scopes
-1. In your app, go to **"OAuth & Permissions"** (left sidebar)
-2. Scroll to **"Scopes"** → **"Bot Token Scopes"**
-3. Add these scopes:
-   - `channels:read` - List public channels
-   - `channels:history` - Read message history  
-   - `chat:write` - Post messages
-   - `reactions:write` - Add emoji reactions
-   - `users:read` - Get user information
-   - `files:read` - Access file information
+In **"OAuth & Permissions"**:
+- Add **Bot Token Scopes**:
+  - `channels:read` - View basic information about public channels
+  - `channels:history` - View messages and other content in public channels
+  - `chat:write` - Send messages as the app
+  - `chat:write.public` - Send messages to channels the app is not a member of
+  - `groups:read` - View basic information about private channels
+  - `groups:history` - View messages in private channels
+  - `im:read` - View basic information about direct messages
+  - `mpim:read` - View basic information about group direct messages
+  - `reactions:write` - Add and edit emoji reactions
+  - `users:read` - View people in the workspace
+  - `users:read.email` - View email addresses of people in the workspace
 
-#### Step 3: Configure User Token Scopes  
-1. In the same **"OAuth & Permissions"** page
-2. Scroll to **"User Token Scopes"**
-3. Add these scopes:
-   - `search:read` - Search messages and files
-   - `channels:read` - List channels user has access to
-   - `users:read` - Get user information
+#### Step 3: Configure User Token Scopes
+In **"OAuth & Permissions"**:
+- Add **User Token Scopes**:
+  - `search:read` - Search the content and messages in the workspace
 
-#### Step 4: Install to Workspace
+#### Step 4: Install App to Workspace
 1. Click **"Install to Workspace"** at the top of the OAuth page
 2. Review permissions and click **"Allow"**
 3. Copy the **"Bot User OAuth Token"** (starts with `xoxb-`)
@@ -144,493 +346,371 @@ SLACK_SAFE_SEARCH=false
 #### Step 5: Add Tokens to Environment
 ```bash
 # Copy the sample environment file
-cp .env.sample .env
+cp .env.example .env
 
 # Edit .env and paste your tokens:
 # SLACK_BOT_TOKEN=xoxb-your-actual-bot-token
 # SLACK_USER_TOKEN=xoxp-your-actual-user-token
 ```
 
-> **🛡️ Security Note**: Never commit your actual tokens to version control! The `.env` file is in `.gitignore` to prevent accidental commits.
+---
 
-### 🛡️ Safe Search Mode
+## 🛠️ MCP Tool Reference
 
-When `SLACK_SAFE_SEARCH=true`, the server automatically excludes:
-- 🔒 Private channels
-- 💬 Direct messages  
-- 👥 Group messages
+### Core Messaging Tools
+
+#### `slack_post_message`
+Send a message to a Slack channel.
+
+**Parameters:**
+- `channel_name` (string): Channel name (without #) or channel ID
+- `text` (string): Message text to post
+
+**Example:**
+```json
+{
+  "channel_name": "general",
+  "text": "Hello from MCP!"
+}
+```
+
+#### `slack_reply_to_thread`
+Reply to a message thread.
+
+**Parameters:**
+- `channel_name` (string): Channel name or ID
+- `thread_ts` (string): Timestamp of parent message
+- `text` (string): Reply text
+
+#### `slack_add_reaction`
+Add emoji reaction to a message.
+
+**Parameters:**
+- `channel_name` (string): Channel name or ID
+- `timestamp` (string): Message timestamp
+- `reaction` (string): Emoji name (e.g., "thumbsup", "heart")
+
+### Data Retrieval Tools
+
+#### `slack_list_channels`
+List all accessible channels.
+
+**Parameters:**
+- `limit` (integer, optional): Max channels to return (default: 100)
+
+#### `slack_get_channel_history`
+Get recent messages from a channel.
+
+**Parameters:**
+- `channel_name` (string): Channel name or ID
+- `limit` (integer, optional): Max messages to return (default: 50)
+
+#### `slack_get_thread_replies`
+Get all replies in a thread.
+
+**Parameters:**
+- `channel_name` (string): Channel name or ID
+- `thread_ts` (string): Parent message timestamp
+
+#### `slack_get_users`
+List workspace users.
+
+**Parameters:**
+- `limit` (integer, optional): Max users to return (default: 100)
+
+### Search Tools
+
+#### `slack_search_messages`
+Search messages (requires user token).
+
+**Parameters:**
+- `query` (string): Search query with Slack syntax support
+- `limit` (integer, optional): Max results (default: 20)
+
+**Slack Search Syntax:**
+- `in:#channel-name` - Search in specific channel
+- `from:@username` - Search from specific user
+- `before:2024-01-01` - Search before date
+- `has:link` - Messages with links
+- `has:file` - Messages with files
+
+#### `slack_search_users`
+Search users by name or email.
+
+**Parameters:**
+- `query` (string): Search term
+
+#### `slack_search_channels`
+Search channels by name.
+
+**Parameters:**
+- `query` (string): Search term
 
 ---
 
-## 🚀 Running Locally
+## 🐳 Docker Deployment
 
-### 🖥️ Development Setup
-
-```bash
-# 1. Clone and navigate
-git clone https://github.com/bluefoxlabsai/bfl-mcp-servers.git
-cd bfl-mcp-servers/slack-server-mcp
-
-# 2. Install uv (if not already installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 3. Install dependencies
-uv sync
-
-# 4. Set up environment
-cp .env.example .env
-# Edit .env with your Slack tokens
-
-# 5. Run the server
-uv run slack-mcp-server
-```
-
-### ⚡ Quick Commands
-
-```bash
-# Install dependencies
-uv sync
-
-# Run in STDIO mode (default - for AI assistants)
-uv run slack-mcp-server
-
-# Run in HTTP mode (for web apps)
-uv run slack-mcp-server --port 8000
-
-# Run tests
-uv run pytest
-
-# Format code
-uv run black .
-
-# Lint code  
-uv run ruff check . --fix
-
-# Type checking
-uv run mypy slack_mcp_server/
-```
-
----
-
-## 🎯 Usage
-
-### 🔌 Transport Modes
-
-<div align="center">
-
-| Mode | Use Case | Command |
-|------|----------|---------|
-| **STDIO** 📡 | AI Assistants, Desktop Apps | `uv run slack-mcp-server` |
-| **SSE** 🌐 | Web Apps, APIs, Remote Access | `uv run slack-mcp-server --port 8000` |
-
-</div>
-
-#### 🤖 STDIO Mode (AI Assistants)
-
-```bash
-# Global installation
-slack-mcp-server
-
-# With uv (from project directory)
-uv run slack-mcp-server
-
-# With environment variables
-SLACK_BOT_TOKEN=xoxb-xxx SLACK_USER_TOKEN=xoxp-xxx uv run slack-mcp-server
-```
-
-#### 🌐 SSE Mode (Web Applications)
-
-```bash
-# Global installation
-slack-mcp-server --port 8000
-
-# With uv (from project directory)
-uv run slack-mcp-server --port 8000
-
-# Custom port
-uv run slack-mcp-server --port 3000
-
-# SSE endpoint will be available at: http://localhost:PORT/sse
-```
-
-### 🐳 Docker
-
-#### Quick Start with Pre-built Image
-
-```bash
-# Run with SSE transport (default)
-docker run -p 8000:8000 \
-  -e SLACK_BOT_TOKEN=xoxb-your-token \
-  -e SLACK_USER_TOKEN=xoxp-your-token \
-  bfljerum/slack-server-mcp:latest
-
-# SSE endpoint available at: http://localhost:8000/sse
-```
-
-#### Build Locally
+### Build & Run
 
 ```bash
 # Build the image
 docker build -t slack-mcp-server .
 
-# Run in STDIO mode
-docker run -e SLACK_BOT_TOKEN=xoxb-xxx -e SLACK_USER_TOKEN=xoxp-xxx slack-mcp-server uv run slack-mcp-server
-
-# Run in SSE mode (default)
-docker run -p 8000:8000 -e SLACK_BOT_TOKEN=xoxb-xxx -e SLACK_USER_TOKEN=xoxp-xxx slack-mcp-server
+# Run with environment variables
+docker run -p 8000:8000 \
+  -e SLACK_BOT_TOKEN=xoxb-your-bot-token \
+  -e SLACK_USER_TOKEN=xoxp-your-user-token \
+  slack-mcp-server
 ```
 
-#### Docker Compose
+### Docker Compose
 
-```bash
-# Create .env file with your tokens
-echo "SLACK_BOT_TOKEN=xoxb-your-token" > .env
-echo "SLACK_USER_TOKEN=xoxp-your-token" >> .env
-
-# Run with docker-compose
-docker-compose up -d
-
-# Check health
-curl http://localhost:8000/health
+```yaml
+version: '3.8'
+services:
+  slack-mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SLACK_BOT_TOKEN=xoxb-your-bot-token
+      - SLACK_USER_TOKEN=xoxp-your-user-token
+    restart: unless-stopped
 ```
 
 ---
 
-## 📚 Examples
+## ☸️ Kubernetes Deployment
 
-### 🔧 Python Integration
-```python
-from slack_mcp_server.server import main
+### Prerequisites
 
-# Run in STDIO mode (for AI assistants)
-main()
+- **Kubernetes cluster** (1.19+)
+- **Helm 3** installed
+- **kubectl** configured for your cluster
+- **Slack tokens** (bot and user tokens)
 
-# Run in SSE mode (for web applications)
-main(port=8000)
-```
-
-### 📝 Example Scripts
-
-The `examples_python/` directory contains ready-to-use examples:
+### Quick Install
 
 ```bash
-# STDIO example - demonstrates process communication
-uv run python examples_python/get_users.py
+# Navigate to the helm directory
+cd helm
 
-# HTTP example - demonstrates web API integration  
-uv run python examples_python/get_users_http.py
+# Run the interactive installer
+./install.sh
 ```
+
+The installer will:
+- ✅ Create the `mcp-servers` namespace
+- ✅ Prompt for your Slack bot and user tokens
+- ✅ Create a Kubernetes secret with the tokens
+- ✅ Set up image pull authentication for GHCR
+- ✅ Install the Helm chart
+- ✅ Wait for deployment readiness
+
+### Manual Installation
+
+If you prefer manual installation:
+
+```bash
+# 1. Create namespace
+kubectl create namespace mcp-servers
+
+# 2. Create secret with Slack tokens
+kubectl create secret generic slack-server-mcp-secret \
+  --from-literal=bot-token=xoxb-your-bot-token \
+  --from-literal=user-token=xoxp-your-user-token \
+  -n mcp-servers
+
+# 3. Install Helm chart (image is publicly accessible - no authentication needed)
+helm install slack-server-mcp . \
+  --namespace mcp-servers \
+  --set slack.existingSecret=slack-server-mcp-secret
+```
+
+### Post-Installation
+
+```bash
+# Check deployment status
+kubectl get pods -n mcp-servers
+
+# View logs
+kubectl logs -f deployment/slack-server-mcp -n mcp-servers
+
+# Test health endpoint
+kubectl port-forward svc/slack-server-mcp 8080:8000 -n mcp-servers
+curl http://localhost:8080/health
+```
+
+### Configuration
+
+Customize your deployment by creating a `values.yaml` file:
+
+```yaml
+# Example values.yaml
+replicaCount: 2
+
+image:
+  tag: "0.1.0"  # Use specific version instead of latest
+
+slack:
+  existingSecret: "my-slack-secret"
+
+# Resource limits
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+```
+
+Then install with: `helm install slack-server-mcp . -f values.yaml`
 
 ---
 
 ## 🏗️ Architecture
 
-### 🔧 Modern Python Stack
+The Slack MCP Server uses:
 
-- **🚀 FastMCP**: High-performance MCP framework
-- **🔗 Pydantic**: Type-safe data validation and serialization
-- **⚡ AsyncIO**: Non-blocking Slack API operations
-- **🛠️ UV**: Ultra-fast Python package management
-- **🐳 Docker**: Containerized deployment ready
+- **FastMCP**: Modern MCP server framework
+- **Slack SDK**: Official Python SDK for Slack API
+- **HTTP Streaming**: Server-sent events on port 8000
+- **Environment Variables**: Secure token management
+- **Async/Await**: Modern Python async patterns
 
-### 🔄 Implementation Pattern
+### Server Flow
 
-```python
-# 1. Schema Definition (Pydantic)
-class PostMessageRequest(BaseModel):
-    channel: str
-    text: str
-
-# 2. Slack API Integration (Async)
-async def slack_post_message(request: PostMessageRequest):
-    response = await slack_client.chat_postMessage(
-        channel=request.channel,
-        text=request.text
-    )
-    return response
-
-# 3. MCP Tool Registration (FastMCP)
-@mcp.tool()
-async def slack_post_message(request: PostMessageRequest):
-    # Implementation with full type safety
-    pass
-```
+1. **Client Connection** → MCP client connects via HTTP streaming
+2. **Tool Calls** → Client invokes Slack API tools
+3. **Token Validation** → Server validates bot/user tokens
+4. **API Calls** → Server makes authenticated Slack API requests
+5. **Response Streaming** → Results streamed back to client
 
 ---
 
-## 🔧 Development
-```
+## 🔒 Security Considerations
 
-**HTTP Transport**:
+- **Token Management**: Store tokens securely, never in code
+- **Minimal Permissions**: Use least-privilege token scopes
+- **Network Security**: Use HTTPS in production
+- **Audit Logging**: Monitor API usage and errors
+- **Token Rotation**: Regularly rotate API tokens
+
+### Safe Search Mode
+
+Enable `SLACK_SAFE_SEARCH=true` to filter potentially sensitive content:
+
 ```bash
-# If installed globally
-slack-mcp-server --port 3000
-
-# If using uv from project directory
-uv run slack-mcp-server --port 3000
+export SLACK_SAFE_SEARCH=true
 ```
-
-### 🛠️ Available Commands
-
-| Command | Description | Usage |
-|---------|-------------|-------|
-| `uv sync` | Install/update dependencies | `uv sync` |
-| `uv run slack-mcp-server` | Run server locally | `uv run slack-mcp-server` |
-| `uv run pytest` | Run test suite | `uv run pytest` |
-| `uv run black .` | Format code | `uv run black .` |
-| `uv run ruff check .` | Lint code | `uv run ruff check . --fix` |
-| `uv run mypy slack_mcp_server/` | Type checking | `uv run mypy slack_mcp_server/` |
-| `uv add <package>` | Add dependency | `uv add requests` |
-
-### 🔄 Contributing
-
-1. **Fork & Clone**
-   ```bash
-   git clone https://github.com/yourusername/bfl-mcp-servers.git
-   cd bfl-mcp-servers/slack-server-mcp
-   ```
-
-2. **Setup Development Environment**
-   ```bash
-   uv sync
-   cp .env.example .env
-   # Add your Slack tokens to .env
-   ```
-
-3. **Make Changes & Test**
-   ```bash
-   uv run pytest                    # Run tests
-   uv run black .                   # Format code
-   uv run ruff check . --fix        # Fix linting
-   uv run mypy slack_mcp_server/    # Type check
-   ```
-
-4. **Submit PR**
-   - Ensure all tests pass
-   - Add tests for new features
-   - Update documentation
 
 ---
 
-## 🎛️ Client Configuration
+## 🐛 Troubleshooting
 
-### 🤖 Claude Desktop (STDIO)
+### Common Issues
 
-Add to your Claude Desktop config:
+#### Token Issues
+```
+Error: invalid_auth
+```
+**Solution**: Verify tokens start with correct prefixes:
+- Bot token: `xoxb-`
+- User token: `xoxp-`
+
+#### Permission Errors
+```
+Error: missing_scope
+```
+**Solution**: Add required OAuth scopes to your Slack app
+
+#### Channel Not Found
+```
+Error: channel_not_found
+```
+**Solution**: Ensure bot is added to private channels or use channel IDs
+
+### Debug Mode
+
+Enable debug logging:
+
+```bash
+export SLACK_SDK_DEBUG=true
+uv run python slack_mcp_server.py --host 0.0.0.0 --port 8000
+```
+
+---
+
+## 📊 Monitoring & Health Checks
+
+The server provides health check endpoints:
+
+- `GET /health` - Basic health check
+- `GET /` - Server info and available tools
+
+### Health Check Response
 
 ```json
 {
-  "mcpServers": {
-    "slack": {
-      "command": "uv",
-      "args": ["run", "slack-mcp-server"],
-      "cwd": "/path/to/your/project",
-      "env": {
-        "SLACK_BOT_TOKEN": "xoxb-your-token",
-        "SLACK_USER_TOKEN": "xoxp-your-token"
-      }
-    }
-  }
+  "status": "healthy",
+  "server": "SlackMCP",
+  "version": "0.1.0",
+  "tools": [
+    "slack_post_message",
+    "slack_get_channel_history",
+    "slack_list_channels",
+    ...
+  ]
 }
 ```
 
-### 🌐 SSE Client Integration
-
-```python
-import aiohttp
-import json
-
-# Call MCP server via SSE
-async def call_mcp_tool():
-    async with aiohttp.ClientSession() as session:
-        message = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {
-                "name": "slack_post_message",
-                "arguments": {
-                    "channel": "#general",
-                    "text": "Hello from SSE!"
-                }
-            }
-        }
-        
-        async with session.post(
-            "http://localhost:8000/sse",
-            json=message,
-            headers={'Accept': 'text/event-stream'}
-        ) as response:
-            async for line in response.content:
-                if line:
-                    print(line.decode())
-```
-
 ---
 
-## 🎯 Advanced Features
+## 🤝 Contributing
 
-### 🔍 Search Capabilities
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
 
-**Message Search Examples:**
+### Development Setup
+
 ```bash
-# Search in specific channel
-"project updates in:dev-team"
+# Install development dependencies
+uv sync --dev
 
-# Search by user and date
-"from:@john after:2024-01-01 has:link"
+# Run tests
+uv run pytest
 
-# Search with multiple filters  
-"bug report from:sarah in:support before:2024-12-01"
+# Run linting
+uv run ruff check .
+uv run ruff format .
 ```
-
-### 🛡️ Security Features
-
-- **Safe Search Mode**: Automatically excludes private content
-- **Token Validation**: Validates Slack tokens on startup
-- **Error Handling**: Comprehensive error responses
-- **Type Safety**: Full Pydantic validation
-
----
-
-## 📊 Performance
-
-| Feature | STDIO Mode | SSE Mode |
-|---------|------------|----------|
-| **Latency** | ~50ms | ~100ms |
-| **Throughput** | Single client | Multiple clients |
-| **Memory** | Process-based | Always running |
-| **Network** | Local only | Network accessible |
-| **Transport** | Process pipes | Server-Sent Events |
-
----
-
-## 🤝 Support
-
-- 📝 **Issues**: [GitHub Issues](https://github.com/bluefoxlabsai/bfl-mcp-servers/issues)
-- 📧 **Email**: support@bluefoxlabs.ai  
-- 🌐 **Website**: [Blue Fox Labs](https://bluefoxlabs.ai)
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](../LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [FastMCP](https://github.com/jlowin/fastmcp) - Modern MCP server framework
+- [Slack SDK](https://github.com/slackapi/python-slack-sdk) - Official Slack Python SDK
+- [Model Context Protocol](https://github.com/modelcontextprotocol) - The MCP specification
 
 ---
 
 <div align="center">
 
-**Made with ❤️ by [Blue Fox Labs AI](https://bluefoxlabs.ai)**
+**Built with ❤️ for the AI assistant community**
 
-*Empowering AI with seamless integrations*
+[📖 Documentation](https://github.com/bluefoxlabsai/bfl-mcp-servers) •
+[🐛 Issues](https://github.com/bluefoxlabsai/bfl-mcp-servers/issues) •
+[💬 Discussions](https://github.com/bluefoxlabsai/bfl-mcp-servers/discussions)
 
 </div>
-{
-  "slack": {
-    "command": "slack-mcp-server",
-    "env": {
-      "SLACK_BOT_TOKEN": "<your-bot-token>",
-      "SLACK_USER_TOKEN": "<your-user-token>",
-      "SLACK_SAFE_SEARCH": "false"
-    }
-  }
-}
-```
-
-**For SSE Transport (Web applications)**:
-
-Start the server:
-```bash
-SLACK_BOT_TOKEN=<your-bot-token> SLACK_USER_TOKEN=<your-user-token> slack-mcp-server --port 3000
-```
-
-Connect to: `http://localhost:3000/sse`
-
-### Examples
-
-#### Python Examples
-
-See [examples_python/README.md](examples_python/README.md) for detailed Python client examples:
-
-- **STDIO Example**: `examples_python/get_users.py` - Demonstrates STDIO transport
-- **SSE Example**: `examples_python/get_users_sse.py` - Demonstrates SSE transport
-
-Run the examples:
-```bash
-# STDIO example
-python examples_python/get_users.py
-
-# Or with uv from project directory
-uv run python examples_python/get_users.py
-
-# SSE example  
-python examples_python/get_users_sse.py
-
-# Or with uv from project directory
-uv run python examples_python/get_users_sse.py
-```
-
-#### TypeScript Examples (Legacy)
-
-The original TypeScript examples are still available in the `examples/` directory for reference.
-
-## Implementation Pattern
-
-This server follows modern Python development practices:
-
-1. **Schema Definition**: Using Pydantic models for request/response validation
-   - Request schemas: Define input parameters with validation
-   - Response schemas: Define structured responses with type safety
-
-2. **Implementation flow**:
-   - Validate request with Zod schema
-   - Call Slack WebAPI
-   - Parse response with Zod schema to limit to necessary fields
-   - Return as JSON
-
-For example, the `slack_list_channels` implementation parses the request with `ListChannelsRequestSchema`, calls `slackClient.conversations.list`, and returns the response parsed with `ListChannelsResponseSchema`.
-
-## Development
-
-### Available Commands
-
-- `uv run pytest` - Run tests
-- `uv run black .` - Format code with Black
-- `uv run ruff check .` - Run linting checks with Ruff
-- `uv run ruff check . --fix` - Auto-fix linting issues
-- `uv run mypy slack_mcp_server/` - Run type checking with MyPy
-- `uv sync` - Install/update dependencies
-- `uv add <package>` - Add a new dependency
-- `uv run slack-mcp-server` - Run the server locally
-
-### Development Setup
-
-```bash
-# Clone and set up the project
-git clone https://github.com/bluefoxlabsai/bfl-mcp-servers.git
-cd bfl-mcp-servers/slack-server-mcp
-
-# Install uv if not already installed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies
-uv sync
-
-# Set up environment variables
-cp .env.example .env
-# Edit .env with your Slack tokens
-
-# Run the server
-uv run slack-mcp-server
-```
-- `npm run fix` - Automatically fix linting issues
-
-### Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Run tests and linting: `npm run lint`
-4. Commit your changes
-5. Push to the branch
-6. Create a Pull Request

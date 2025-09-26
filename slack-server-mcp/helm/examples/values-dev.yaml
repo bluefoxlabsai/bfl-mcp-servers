@@ -1,0 +1,149 @@
+# Example values for production environment
+# Copy this file and customize for your production setup
+
+# Namespace for production
+namespace: slack-mcp
+
+# Production replica count
+replicaCount: 3
+
+# MCP Server Configuration
+mcp:
+  transport: "sse"
+  server:
+    host: "0.0.0.0"
+    port: 8000
+
+# Container image configuration
+image:
+  repository: ghcr.io/bluefoxlabsai/bfl-mcp-servers/slack-server-mcp
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+# Service configuration
+service:
+  enabled: "auto"
+  type: ClusterIP
+  port: 8000
+
+# Ingress for production
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: slack-mcp.yourdomain.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: slack-mcp-tls
+      hosts:
+        - slack-mcp.yourdomain.com
+
+# HTTPRoute for Gateway API (alternative to ingress)
+httpRoute:
+  enabled: false
+  gatewayName: "external-gateway"
+  gatewayNamespace: "gateway-system"
+  hostnames:
+    - slack-mcp.yourdomain.com
+  path: "/"
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+# Resource limits for production
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Health probes for production
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+# Slack Configuration - Use external secrets management
+slack:
+  # DO NOT set tokens directly in values files for production
+  # Use external secret management (Vault, AWS Secrets Manager, etc.)
+  botToken: ""
+  userToken: ""
+  safeSearch: true
+
+  # Use external secret
+  existingSecret: "slack-mcp-secrets"
+  secretKeys:
+    botToken: "bot-token"
+    userToken: "user-token"
+
+# Pod security context for production
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Node selector for production workloads
+nodeSelector:
+  environment: production
+  team: platform
+
+# Tolerations for production
+tolerations:
+  - key: "production"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Affinity for production
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux

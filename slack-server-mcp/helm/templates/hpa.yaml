@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "slack-mcp-server.fullname" . }}
+  name: {{ include "slack-server-mcp.fullname" . }}
   labels:
-    {{- include "slack-mcp-server.labels" . | nindent 4 }}
+    {{- include "slack-server-mcp.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "slack-mcp-server.fullname" . }}
+    name: {{ include "slack-server-mcp.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

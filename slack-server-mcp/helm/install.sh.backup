@@ -171,7 +171,6 @@ create_image_pull_secret() {
         --namespace="$NAMESPACE"
 
     log_success "Image pull secret created"
-}
 
 # Validate values file
 validate_values() {

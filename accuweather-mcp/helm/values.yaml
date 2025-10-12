@@ -19,7 +19,7 @@ mcp:
 
 # Container image configuration
 image:
-  repository: bfljerum/accuweather-mcp
+  repository: ghcr.io/bluefoxlabsai/accuweather-mcp
   pullPolicy: IfNotPresent
   tag: "latest"
 

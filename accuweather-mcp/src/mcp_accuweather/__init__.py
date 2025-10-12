@@ -43,8 +43,12 @@ Environment Variables:
             print(f"Starting AccuWeather MCP Server with SSE transport on port {port}")
             print(f"SSE endpoint available at: http://0.0.0.0:{port}/sse")
             
-            # Use FastMCP's built-in SSE async runner
-            asyncio.run(server.run_sse_async(host="0.0.0.0", port=port))
+            # Use FastMCP's async runner with SSE transport
+            asyncio.run(server.run_async(
+                transport="sse",
+                host="0.0.0.0", 
+                port=port
+            ))
         else:
             # STDIO mode (default)
             print("Starting AccuWeather MCP Server in STDIO mode", file=sys.stderr)

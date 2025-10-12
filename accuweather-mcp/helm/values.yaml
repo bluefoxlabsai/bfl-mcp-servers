@@ -137,7 +137,7 @@ accuweather:
   apiKey: "" # Set via --set accuweather.apiKey=your-key or values file
   
   # Base URL for AccuWeather API
-  baseUrl: "http://dataservice.accuweather.com"
+  baseUrl: "https://dataservice.accuweather.com"
   
   # Cache configuration
   cache:

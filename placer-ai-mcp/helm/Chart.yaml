@@ -1,0 +1,23 @@
+apiVersion: v2
+name: placer-ai-mcp
+description: A Helm chart for the Placer.ai MCP Server with Location Analytics API integration
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+home: https://github.com/bluefoxlabsai/bfl-mcp-servers
+sources:
+  - https://github.com/bluefoxlabsai/bfl-mcp-servers/tree/main/placer-ai-mcp
+
+keywords:
+  - mcp
+  - placer.ai
+  - location-analytics
+  - foot-traffic
+  - demographics
+  - real-estate
+
+maintainers:
+  - name: BlueFox Labs
+    email: support@bluefoxlabs.ai
+    url: https://bluefoxlabs.ai

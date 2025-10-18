@@ -1,0 +1,137 @@
+[project]
+name = "mcp-placer-ai"
+version = "0.1.0"
+description = "Model Context Protocol (MCP) server for Placer.ai Location Analytics API integration. This server enables AI models to access location intelligence data, foot traffic analytics, demographic insights, and competitive analysis through the Placer.ai platform."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=2.3.0,<2.4.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.8.0,<2.12.0",
+    "python-dotenv>=1.0.1",
+    "cachetools>=5.0.0",
+    "uvicorn>=0.27.1",
+    "starlette>=0.37.1",
+    "click>=8.1.7",
+]
+
+[[project.authors]]
+name = "BlueFox Labs"
+email = "support@bluefoxlabs.ai"
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Homepage = "https://github.com/bluefoxlabsai/bfl-mcp-servers"
+Repository = "https://github.com/bluefoxlabsai/bfl-mcp-servers.git"
+Issues = "https://github.com/bluefoxlabsai/bfl-mcp-servers/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-httpx>=0.30.0",
+    "pytest-cov>=4.0.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+]
+
+[project.scripts]
+placer-ai-mcp = "mcp_placer_ai:main"
+mcp-placer-ai = "mcp_placer_ai:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_placer_ai"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+]
+ignore = [
+    "E501", # line too long, handled by black
+    "B008", # do not perform function calls in argument defaults
+    "C901", # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+
+# Black configuration
+[tool.black]
+target-version = ["py310"]
+line-length = 100
+skip-string-normalization = true
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.10"
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "cachetools.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

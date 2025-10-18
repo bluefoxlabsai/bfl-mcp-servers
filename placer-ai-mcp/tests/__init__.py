@@ -1,0 +1,1 @@
+"""Tests for Placer.ai MCP server."""
